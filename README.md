@@ -13,6 +13,7 @@ menu bar app that adds it to the Magic Mouse:
 |---|---|
 | Tap with one finger | Left click |
 | Tap with two fingers | Right click |
+| Tap with three fingers | Middle click |
 | Hold three fingers for 0.5 s | Show Desktop by default; configurable (middle click, Mission Control or nothing) |
 | Tap twice quickly (within 0.5 s, mouse still) | Double click (open files and folders, select a word) |
 | Rest one finger still for ~0.25 s (mouse not moving) | Same drag, without a prior tap |
@@ -38,7 +39,7 @@ telemetry, no network access.
 
 ## Download
 
-Grab `MagicTap-0.2.0.dmg` from the
+Grab `MagicTap-0.2.1.dmg` from the
 [latest release](https://github.com/Cosmichomeless/magictap/releases/latest),
 open it and drag **MagicTap** to **Applications**.
 
@@ -74,7 +75,7 @@ Click the mouse icon in the menu bar, then **Settings…** (⌘,) for the window
 The menu has the same switches:
 
 - **Enabled** — master switch.
-- **Tap → left click** / **Two-finger tap → right click** — toggle each gesture.
+- **Tap → left click** / **Two-finger tap → right click** / **Three-finger tap → middle click** — toggle each gesture.
 - **One-finger swipe left/right → back/forward** — toggle the browser swipe.
 - **Three-finger hold** — rest three fingers for half a second; pick what it does: Show Desktop (default), middle click, Mission Control or nothing.
 - **Double tap → double click** — toggle the double click.
@@ -118,7 +119,7 @@ A touch counts as a tap only if **all** of these hold:
 2. The fingers barely move (it is not a scroll or swipe).
 3. The cursor does not move more than 4 points (you are not just moving the mouse).
 4. No physical button press happens meanwhile.
-5. Exactly one finger (left click) or two (right click) were used; three fingers need to be held 0.5 s instead (three-finger action).
+5. Exactly one finger (left click), two (right click) or three (middle click) were used. Three fingers held 0.5 s run the three-finger hold action instead.
 
 These defaults live in [`TapConfig`](Sources/MagicTapCore/TapDetector.swift).
 See [docs/how-it-works.md](docs/how-it-works.md) for the architecture, the

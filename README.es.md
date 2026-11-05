@@ -13,6 +13,7 @@ app de barra de menús, de código abierto, que lo añade al Magic Mouse:
 |---|---|
 | Toque con un dedo | Clic izquierdo |
 | Toque con dos dedos | Clic derecho |
+| Toque con tres dedos | Clic central |
 | Mantener tres dedos 0,5 s | Mostrar escritorio por defecto; configurable (clic central, Mission Control o nada) |
 | Dos toques seguidos (en menos de 0,5 s, con el ratón quieto) | Doble clic (abrir archivos y carpetas, seleccionar una palabra) |
 | Apoyar un dedo quieto ~0,25 s (sin mover el ratón) | El mismo arrastre, sin toque previo |
@@ -38,7 +39,7 @@ sin telemetría y sin acceso a la red.
 
 ## Descarga
 
-Descarga `MagicTap-0.2.0.dmg` desde la
+Descarga `MagicTap-0.2.1.dmg` desde la
 [última release](https://github.com/Cosmichomeless/magictap/releases/latest),
 ábrelo y arrastra **MagicTap** a **Aplicaciones**.
 
@@ -74,7 +75,7 @@ Pulsa el icono del ratón en la barra de menús y elige **Settings…** (⌘,) p
 El menú tiene los mismos interruptores:
 
 - **Enabled** — interruptor general.
-- **Tap → left click** / **Two-finger tap → right click** / **Double tap → double click** / **Tap, then hold → drag** / **Rest finger → drag** / / **Two-finger swipe up/down → Mission Control** / **Two-finger pinch → zoom** — activa o desactiva cada gesto.
+- **Tap → left click** / **Two-finger tap → right click** / **Three-finger tap → middle click** / **Double tap → double click** / **Tap, then hold → drag** / **Rest finger → drag** / / **Two-finger swipe up/down → Mission Control** / **Two-finger pinch → zoom** — activa o desactiva cada gesto.
 - **One-finger swipe left/right → back/forward** — activa o desactiva el gesto atrás/adelante.
 - **Three-finger hold** — apoya tres dedos medio segundo; elige qué hace: Show Desktop (por defecto), clic central, Mission Control o nada.
 - **Launch at login** — solo funciona desde la `.app` empaquetada.
@@ -114,7 +115,7 @@ Un contacto cuenta como toque solo si se cumple **todo** esto:
 2. Los dedos casi no se mueven (no es un scroll ni un deslizamiento).
 3. El cursor no se mueve más de 4 puntos (no estás simplemente moviendo el ratón).
 4. No hay una pulsación física del botón mientras tanto.
-5. Se usó exactamente un dedo (clic izquierdo) o dos (clic derecho); con tres dedos hay que mantenerlos 0,5 s (acción de tres dedos).
+5. Se usó exactamente un dedo (clic izquierdo), dos (clic derecho) o tres (clic central). Tres dedos mantenidos 0,5 s ejecutan la acción de mantener tres dedos.
 
 Estos valores están en [`TapConfig`](Sources/MagicTapCore/TapDetector.swift).
 La arquitectura, la API privada y la resolución de problemas están en

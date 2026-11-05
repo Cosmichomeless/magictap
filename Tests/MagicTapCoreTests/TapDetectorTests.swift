@@ -69,8 +69,20 @@ final class TapDetectorTests: XCTestCase {
         XCTAssertEqual(fired ?? 0, 10.5, accuracy: 0.06)
     }
 
-    func testQuickThreeFingerTapDoesNothing() {
-        XCTAssertNil(tap(detector(), fingers: three))
+    func testQuickThreeFingerTapIsMiddleClick() {
+        XCTAssertEqual(tap(detector(), fingers: three), .middleClick)
+    }
+
+    func testQuickThreeFingerTapCanBeDisabled() {
+        XCTAssertNil(tap(detector { $0.threeFingerMiddleClick = false }, fingers: three))
+    }
+
+    func testSlowThreeFingerTouchIsNotMiddleClick() {
+        XCTAssertNil(tap(detector(), fingers: three, duration: 0.3))
+    }
+
+    func testThreeFingerHoldDoesNotAlsoMiddleClick() {
+        XCTAssertEqual(holdActions(detector(), three, seconds: 1.5), [.threeFingerTap])
         XCTAssertEqual(holdActions(detector(), three, seconds: 0.4), [])
     }
 
@@ -354,7 +366,7 @@ final class TapDetectorTests: XCTestCase {
 
     func testEdgeFilterCanBeDisabled() {
         // Without the filter the two grip contacts count: three fingers, not a left click.
-        XCTAssertNil(tap(detector { $0.edgeMargin = 0 }, fingers: edges + [finger]))
+        XCTAssertEqual(tap(detector { $0.edgeMargin = 0 }, fingers: edges + [finger]), .middleClick)
     }
 
     func testFingerHoveringAtTheMarginIsNotSplitIntoTwoTaps() {

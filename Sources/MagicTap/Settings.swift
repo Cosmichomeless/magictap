@@ -25,6 +25,7 @@ enum Settings {
         static let enabled = "enabled"
         static let leftTap = "singleFingerLeftClick"
         static let rightTap = "twoFingerRightClick"
+        static let middleTap = "threeFingerMiddleClick"
         static let threeFingerAction = "threeFingerAction"
         static let tapAndDrag = "tapAndDrag"
         static let holdToDrag = "holdToDrag"
@@ -67,6 +68,11 @@ enum Settings {
     static var twoFingerRightClick: Bool {
         get { defaults.object(forKey: Key.rightTap) as? Bool ?? true }
         set { defaults.set(newValue, forKey: Key.rightTap) }
+    }
+
+    static var threeFingerMiddleClick: Bool {
+        get { defaults.object(forKey: Key.middleTap) as? Bool ?? true }
+        set { defaults.set(newValue, forKey: Key.middleTap) }
     }
 
     /// What a three-finger hold does. Show Desktop unless the user picked another.
@@ -113,6 +119,7 @@ enum Settings {
         var config = TapConfig()
         config.singleFingerLeftClick = singleFingerLeftClick
         config.twoFingerRightClick = twoFingerRightClick
+        config.threeFingerMiddleClick = threeFingerMiddleClick
         config.threeFingerTap = threeFingerAction != .none
         config.tapAndDrag = tapAndDrag
         config.holdToDrag = holdToDrag

@@ -126,6 +126,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         menu.addItem(.separator())
         menu.addItem(item("Tap → left click", #selector(toggleLeft), checked: Settings.singleFingerLeftClick))
         menu.addItem(item("Two-finger tap → right click", #selector(toggleRight), checked: Settings.twoFingerRightClick))
+        menu.addItem(item("Three-finger tap → middle click", #selector(toggleMiddle), checked: Settings.threeFingerMiddleClick))
         let threeFinger = NSMenuItem(title: "Three-finger hold", action: nil, keyEquivalent: "")
         let threeFingerMenu = NSMenu()
         for action in ThreeFingerAction.allCases {
@@ -176,6 +177,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     @objc private func toggleRight() {
         Settings.twoFingerRightClick.toggle()
+        detector.config = Settings.tapConfig
+    }
+
+    @objc private func toggleMiddle() {
+        Settings.threeFingerMiddleClick.toggle()
         detector.config = Settings.tapConfig
     }
 

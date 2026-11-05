@@ -39,6 +39,7 @@ private extension TapAction {
         case .leftClick: return "Left click"
         case .doubleClick: return "Double click"
         case .rightClick: return "Right click"
+        case .middleClick: return "Middle click"
         case .threeFingerTap: return "Three-finger hold"
         case .dragStart: return "Drag started"
         case .dragEnd: return "Drag ended"

@@ -21,6 +21,8 @@ public enum TapAction: Equatable {
     /// Second tap of a double tap: a click with click count 2.
     case doubleClick
     case rightClick
+    /// Quick three-finger tap, like the one- and two-finger taps.
+    case middleClick
     /// Three fingers held together for `TapConfig.threeFingerHold`. The app decides what it does (show desktop, middle click…).
     case threeFingerTap
     /// Button goes down at `TapDetector.dragOrigin` (tap-and-drag started).
@@ -94,6 +96,8 @@ public struct TapConfig: Equatable {
     public var navigationStartDistance: Float = 0.05
     public var singleFingerLeftClick = true
     public var twoFingerRightClick = true
+    /// A quick three-finger tap (same timing rules as the other taps) is a middle click.
+    public var threeFingerMiddleClick = true
     /// Three fingers resting together on the surface for `threeFingerHold`
     /// trigger `.threeFingerTap`. A quick tap would fire by accident and the
     /// third finger rarely lands cleanly, so it has to be a deliberate hold.
@@ -443,6 +447,7 @@ public final class TapDetector {
             lastTapCursor = cursor
             return .leftClick
         case 2 where config.twoFingerRightClick: return .rightClick
+        case 3 where config.threeFingerMiddleClick: return .middleClick
         default: return nil
         }
     }

@@ -29,6 +29,9 @@ enum ClickPoster {
         case .rightClick:
             send(.rightMouseDown, button: .right, at: cursorLocation)
             send(.rightMouseUp, button: .right, at: cursorLocation)
+        case .middleClick:
+            send(.otherMouseDown, button: .center, at: cursorLocation)
+            send(.otherMouseUp, button: .center, at: cursorLocation)
         case .threeFingerTap:
             switch Settings.threeFingerAction {
             case .showDesktop: showDesktop()

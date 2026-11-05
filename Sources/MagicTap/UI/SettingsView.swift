@@ -23,6 +23,7 @@ private struct GesturesTab: View {
     @AppStorage(Settings.Key.enabled) private var enabled = true
     @AppStorage(Settings.Key.leftTap) private var leftTap = true
     @AppStorage(Settings.Key.rightTap) private var rightTap = true
+    @AppStorage(Settings.Key.middleTap) private var middleTap = true
     @AppStorage(Settings.Key.threeFingerAction) private var threeFinger = ThreeFingerAction.showDesktop.rawValue
     @AppStorage(Settings.Key.doubleTap) private var doubleTap = true
     @AppStorage(Settings.Key.tapAndDrag) private var tapAndDrag = true
@@ -46,6 +47,7 @@ private struct GesturesTab: View {
             Section("Gestures") {
                 Toggle("Tap → left click", isOn: $leftTap)
                 Toggle("Two-finger tap → right click", isOn: $rightTap)
+                Toggle("Three-finger tap → middle click", isOn: $middleTap)
                 Picker("Three-finger hold", selection: $threeFinger) {
                     ForEach(ThreeFingerAction.allCases) { Text($0.title).tag($0.rawValue) }
                 }
@@ -78,7 +80,7 @@ private struct GesturesTab: View {
         .formStyle(.grouped)
         .onChange(of: enabled) { _ in apply() }
         .onChange(of: threeFinger) { _ in apply() }
-        .onChange(of: [leftTap, rightTap, doubleTap, tapAndDrag, holdToDrag, missionControl, pinch, navigation]) { _ in apply() }
+        .onChange(of: [leftTap, rightTap, middleTap, doubleTap, tapAndDrag, holdToDrag, missionControl, pinch, navigation]) { _ in apply() }
         .onChange(of: [maxTapDuration, doubleTapWindow, holdToDragAfter, swipeDistance, pinchGain, edgeMargin]) { _ in apply() }
     }
 

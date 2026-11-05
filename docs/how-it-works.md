@@ -178,8 +178,11 @@ every setup. Keyboard shortcuts (⌘←/⌘→) were rejected because they jump 
 
 ## Three-finger hold
 
-A quick three-finger tap is unreliable on this surface: real attempts last
-0.2-0.4 s and the third finger often lands at the edge. So the gesture is a hold.
+A quick three-finger tap (`.middleClick`, same timing rules as the one- and
+two-finger taps, edge filter included) is a plain middle click. It only counts if
+the third finger lands inside the grip margin, which is not always the case on
+this surface: real attempts last 0.2-0.4 s and the third finger often lands at
+the edge. The more tolerant gesture is the hold below.
 `TapDetector` keeps a separate tracker of **all** contacts (edges included,
 `threeFingerEdgeMargin` 0), evaluated before the resting-finger filter. It fires
 `.threeFingerTap` once when three contacts that landed within `threeFingerLanding`
