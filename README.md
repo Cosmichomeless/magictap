@@ -34,6 +34,18 @@ telemetry, no network access.
 - Xcode or the Swift toolchain (to build from source)
 - An Apple Magic Mouse (Lightning or USB-C)
 
+## Download
+
+Grab `MagicTap-0.1.0.dmg` from the
+[latest release](https://github.com/Cosmichomeless/magictap/releases/latest),
+open it and drag **MagicTap** to **Applications**.
+
+The app is ad-hoc signed and **not notarized** (that needs a paid Apple
+Developer account), so macOS blocks the first launch. To open it anyway:
+right-click the app → **Open** → **Open**, or run
+`xattr -dr com.apple.quarantine /Applications/MagicTap.app`. Then grant
+Accessibility permission (below).
+
 ## Build and install
 
 ```sh
