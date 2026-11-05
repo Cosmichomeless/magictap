@@ -8,6 +8,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private var monitor: MouseMonitor?
     private var buttonMonitor: Any?
     private let debug: Bool
+    private var lastFrame = Date()
+    private var dragWatchdog: Timer?
 
     init(debug: Bool) {
         self.debug = debug
@@ -28,18 +30,26 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         buttonMonitor = NSEvent.addGlobalMonitorForEvents(
             matching: [.leftMouseDown, .rightMouseDown, .otherMouseDown]
         ) { [weak self] _ in
+            ClickPoster.missionControlOpen = false // any click leaves Mission Control
             guard Date() >= ClickPoster.ignoreButtonEventsUntil else { return }
             self?.detector.noteButtonEvent()
         }
 
-        let monitor = MouseMonitor(api: api)
+        let monitor = MouseMonitor(api: api, verbose: debug)
         self.monitor = monitor
         monitor.start { [weak self] touches, timestamp in
             self?.handleFrame(touches: touches, timestamp: timestamp)
         }
+        // If the mouse disappears mid-drag no "all fingers lifted" frame ever
+        // arrives; never leave the button stuck down.
+        dragWatchdog = Timer.scheduledTimer(withTimeInterval: 0.5, repeats: true) { [weak self] _ in
+            guard let self, self.detector.isDragging, Date().timeIntervalSince(self.lastFrame) > 1 else { return }
+            self.releaseDrag()
+        }
     }
 
     func applicationWillTerminate(_ notification: Notification) {
+        releaseDrag()
         monitor?.stop()
         if let buttonMonitor { NSEvent.removeMonitor(buttonMonitor) }
     }
@@ -47,8 +57,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     // MARK: Input
 
     private func handleFrame(touches: [TouchPoint], timestamp: TimeInterval) {
+        lastFrame = Date()
         guard Settings.enabled else {
-            detector.reset()
+            releaseDrag()
             return
         }
         if debug {
@@ -57,12 +68,22 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         }
         guard let action = detector.process(
             time: timestamp, touches: touches, cursor: ClickPoster.cursorLocation
-        ) else { return }
+        ) else {
+            if detector.isDragging, !debug, ClickPoster.isTrusted { ClickPoster.sendDragged() }
+            return
+        }
 
         if debug {
             print("→ \(action)")
         } else if ClickPoster.isTrusted {
-            ClickPoster.post(action)
+            ClickPoster.post(action, dragOrigin: detector.dragOrigin)
+        }
+    }
+
+    /// Resets the detector and lets go of the button if a drag was in progress.
+    private func releaseDrag() {
+        if detector.reset(), !debug, ClickPoster.isTrusted {
+            ClickPoster.post(.dragEnd)
         }
     }
 
@@ -84,6 +105,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         menu.addItem(.separator())
         menu.addItem(item("Tap → left click", #selector(toggleLeft), checked: Settings.singleFingerLeftClick))
         menu.addItem(item("Two-finger tap → right click", #selector(toggleRight), checked: Settings.twoFingerRightClick))
+        menu.addItem(item("Tap, then hold → drag", #selector(toggleDrag), checked: Settings.tapAndDrag))
+        menu.addItem(item("Rest finger → drag", #selector(toggleHoldDrag), checked: Settings.holdToDrag))
+        menu.addItem(item("Two-finger swipe up/down → Mission Control", #selector(toggleMissionControl), checked: Settings.missionControlSwipe))
+        menu.addItem(item("Two-finger pinch → zoom", #selector(togglePinch), checked: Settings.pinchZoom))
         menu.addItem(.separator())
 
         let mouseCount = monitor?.activeDeviceCount ?? 0
@@ -108,7 +133,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     @objc private func toggleEnabled() {
         Settings.enabled.toggle()
         statusItem.button?.appearsDisabled = !Settings.enabled
-        detector.reset()
+        releaseDrag()
     }
 
     @objc private func toggleLeft() {
@@ -118,6 +143,26 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     @objc private func toggleRight() {
         Settings.twoFingerRightClick.toggle()
+        detector.config = Settings.tapConfig
+    }
+
+    @objc private func toggleDrag() {
+        Settings.tapAndDrag.toggle()
+        detector.config = Settings.tapConfig
+    }
+
+    @objc private func toggleHoldDrag() {
+        Settings.holdToDrag.toggle()
+        detector.config = Settings.tapConfig
+    }
+
+    @objc private func toggleMissionControl() {
+        Settings.missionControlSwipe.toggle()
+        detector.config = Settings.tapConfig
+    }
+
+    @objc private func togglePinch() {
+        Settings.pinchZoom.toggle()
         detector.config = Settings.tapConfig
     }
 

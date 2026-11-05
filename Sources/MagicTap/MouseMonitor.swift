@@ -11,13 +11,18 @@ final class MouseMonitor {
     fileprivate static var frameHandler: FrameHandler?
 
     private let api: MultitouchAPI
+    private let verbose: Bool
     private var deviceList: CFArray?
     private var active: [MTDevice] = []
-    private var signature: [UInt] = []
+    /// Stable hardware IDs of the active mice. Device pointers are NOT stable:
+    /// MTDeviceCreateList returns fresh objects on every call, so comparing
+    /// them would restart the mouse on every rescan.
+    private var signature: [UInt64] = []
     private var rescanTimer: Timer?
 
-    init(api: MultitouchAPI) {
+    init(api: MultitouchAPI, verbose: Bool = false) {
         self.api = api
+        self.verbose = verbose
     }
 
     func start(onFrame: @escaping FrameHandler) {
@@ -46,7 +51,7 @@ final class MouseMonitor {
         guard let list = api.createList()?.takeRetainedValue() else { return }
         let devices = (list as [AnyObject]).map { Unmanaged.passUnretained($0).toOpaque() }
         let mice = devices.filter(isMagicMouse)
-        let newSignature = mice.map { UInt(bitPattern: $0) }
+        let newSignature = mice.map(hardwareID).sorted()
         guard force || newSignature != signature else { return }
 
         stopDevices()
@@ -57,6 +62,7 @@ final class MouseMonitor {
             api.registerCallback(device, contactCallback)
             _ = api.start(device, 0)
         }
+        if verbose { print("[monitor] listening to \(mice.count) Magic Mouse device(s)") }
     }
 
     private func stopDevices() {
@@ -67,6 +73,12 @@ final class MouseMonitor {
         active = []
         signature = []
         deviceList = nil
+    }
+
+    private func hardwareID(_ device: MTDevice) -> UInt64 {
+        var id: UInt64 = 0
+        _ = api.deviceID(device, &id)
+        return id
     }
 
     /// The Magic Mouse is an external multitouch surface that is taller than

@@ -19,6 +19,7 @@ struct MultitouchAPI {
     let isBuiltIn: @convention(c) (MTDevice) -> Bool
     let surfaceDimensions: @convention(c) (MTDevice, UnsafeMutablePointer<Int32>, UnsafeMutablePointer<Int32>) -> Int32
     let familyID: @convention(c) (MTDevice, UnsafeMutablePointer<Int32>) -> Int32
+    let deviceID: @convention(c) (MTDevice, UnsafeMutablePointer<UInt64>) -> Int32
 
     static func load() -> MultitouchAPI? {
         let path = "/System/Library/PrivateFrameworks/MultitouchSupport.framework/MultitouchSupport"
@@ -36,7 +37,8 @@ struct MultitouchAPI {
             let stop = symbol("MTDeviceStop", as: (@convention(c) (MTDevice) -> Int32).self),
             let isBuiltIn = symbol("MTDeviceIsBuiltIn", as: (@convention(c) (MTDevice) -> Bool).self),
             let dims = symbol("MTDeviceGetSensorSurfaceDimensions", as: (@convention(c) (MTDevice, UnsafeMutablePointer<Int32>, UnsafeMutablePointer<Int32>) -> Int32).self),
-            let family = symbol("MTDeviceGetFamilyID", as: (@convention(c) (MTDevice, UnsafeMutablePointer<Int32>) -> Int32).self)
+            let family = symbol("MTDeviceGetFamilyID", as: (@convention(c) (MTDevice, UnsafeMutablePointer<Int32>) -> Int32).self),
+            let deviceID = symbol("MTDeviceGetDeviceID", as: (@convention(c) (MTDevice, UnsafeMutablePointer<UInt64>) -> Int32).self)
         else { return nil }
 
         return MultitouchAPI(
@@ -47,7 +49,8 @@ struct MultitouchAPI {
             stop: stop,
             isBuiltIn: isBuiltIn,
             surfaceDimensions: dims,
-            familyID: family
+            familyID: family,
+            deviceID: deviceID
         )
     }
 }
