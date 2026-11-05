@@ -21,6 +21,8 @@ public enum TapAction: Equatable {
     /// Second tap of a double tap: a click with click count 2.
     case doubleClick
     case rightClick
+    /// Three fingers held together for `TapConfig.threeFingerHold`. The app decides what it does (show desktop, middle click…).
+    case threeFingerTap
     /// Button goes down at `TapDetector.dragOrigin` (tap-and-drag started).
     case dragStart
     /// Button goes up (the finger that was dragging lifted).
@@ -32,6 +34,10 @@ public enum TapAction: Equatable {
     /// Continuous pinch: `amount` is the change in magnification for this frame
     /// (positive = fingers apart), like a trackpad magnify gesture.
     case magnify(Float, GesturePhase)
+    /// One finger sliding sideways: horizontal movement of this frame in sensor
+    /// units (positive = to the right). The app turns it into trackpad-style
+    /// scroll events, which browsers use for their back / forward swipe.
+    case navigate(Float, GesturePhase)
 }
 
 public struct TapConfig: Equatable {
@@ -82,8 +88,25 @@ public struct TapConfig: Equatable {
     public var pinchGain: Float = 2.5
     public var missionControlSwipe = true
     public var pinchZoom = true
+    /// One finger sliding sideways this far (normalized, mostly horizontal) starts
+    /// a back / forward swipe.
+    public var navigationSwipe = true
+    public var navigationStartDistance: Float = 0.05
     public var singleFingerLeftClick = true
     public var twoFingerRightClick = true
+    /// Three fingers resting together on the surface for `threeFingerHold`
+    /// trigger `.threeFingerTap`. A quick tap would fire by accident and the
+    /// third finger rarely lands cleanly, so it has to be a deliberate hold.
+    public var threeFingerTap = true
+    public var threeFingerHold: TimeInterval = 0.5
+    /// The three fingers must have landed within this time of each other, so a
+    /// resting grip finger plus a later one is not mistaken for the gesture.
+    public var threeFingerLanding: TimeInterval = 0.25
+    /// Contacts closer than this to the sides are ignored by the hold. 0 (the
+    /// default) uses the whole surface, edges included: the third finger often
+    /// lands there. The catch: the grip at the sides plus one resting finger
+    /// can then look like three fingers.
+    public var threeFingerEdgeMargin: Float = 0
 
     public init() {}
 }
@@ -114,6 +137,8 @@ public final class TapDetector {
         /// A swipe/pinch was already reported for this contact.
         var fired = false
         var lastSeparation: Float = 0
+        /// Where the first contact landed.
+        var startPoint: TouchPoint
     }
 
     private struct Track {
@@ -123,10 +148,16 @@ public final class TapDetector {
 
     private var session: Session?
     private var tracks: [Track] = []
+    /// Every contact, edges included, for the three-finger hold.
+    private var holdTracks: [Track] = []
     private var lastTapEnd: TimeInterval?
     private var lastTapCursor: CGPoint = .zero
     private var dragging = false
     private var pinching = false
+    private var navigating = false
+    private var navigationX: Float = 0
+    /// The three-finger hold already fired; waits for all fingers to lift.
+    private var threeFingerFired = false
 
     /// True between `.dragStart` and `.dragEnd`.
     public var isDragging: Bool { dragging }
@@ -142,7 +173,9 @@ public final class TapDetector {
     ///   - touches: fingers currently touching the surface.
     ///   - cursor: current pointer location in screen points.
     public func process(time: TimeInterval, touches all: [TouchPoint], cursor: CGPoint) -> TapAction? {
+        updateHoldTracks(all, at: time)
         let touches = activeTouches(all, at: time)
+        if let action = threeFingerHold(at: time) { return action }
         if touches.isEmpty {
             return finish(at: time, cursor: cursor)
         }
@@ -163,10 +196,23 @@ public final class TapDetector {
                     && lastTapEnd.map { time - $0 <= config.dragWindow } == true,
                 followsDoubleTap: config.doubleTap && touches.count == 1
                     && lastTapEnd.map { time - $0 <= config.doubleTapWindow } == true
-                    && Self.distance(cursor, lastTapCursor) <= config.doubleTapRadius
+                    && Self.distance(cursor, lastTapCursor) <= config.doubleTapRadius,
+                startPoint: centroid
             )
             lastTapEnd = nil
             return nil
+        }
+
+        if navigating {
+            guard touches.count == 1 else {
+                navigating = false
+                s.invalid = true
+                session = s
+                return .navigate(0, .ended)
+            }
+            let delta = centroid.x - navigationX
+            navigationX = centroid.x
+            return delta == 0 ? nil : .navigate(delta, .changed)
         }
 
         if pinching {
@@ -191,6 +237,19 @@ public final class TapDetector {
         s.lastCentroid = centroid
         s.lastCount = touches.count
         s.maxFingers = max(s.maxFingers, touches.count)
+
+        if config.navigationSwipe, touches.count == 1, s.maxFingers == 1, !s.fired, !s.followsTap {
+            let dx = centroid.x - s.startPoint.x
+            let dy = centroid.y - s.startPoint.y
+            if abs(dx) >= config.navigationStartDistance, abs(dy) <= abs(dx) / 2 {
+                navigating = true
+                navigationX = centroid.x
+                s.fired = true
+                s.invalid = true
+                session = s
+                return .navigate(dx, .began)
+            }
+        }
 
         if touches.count == 2, s.maxFingers == 2, !s.fired {
             let separation = Self.distance(touches[0], touches[1])
@@ -237,6 +296,45 @@ public final class TapDetector {
         return nil
     }
 
+    /// Follows every contact (nearest match), with no edge or resting filter.
+    private func updateHoldTracks(_ all: [TouchPoint], at time: TimeInterval) {
+        var available = holdTracks
+        var updated: [Track] = []
+        for touch in all {
+            let nearest = available.indices.min {
+                Self.distance(available[$0].position, touch) < Self.distance(available[$1].position, touch)
+            }
+            var born = time
+            if let index = nearest, Self.distance(available[index].position, touch) <= config.trackRadius {
+                born = available[index].born
+                available.remove(at: index)
+            }
+            updated.append(Track(position: touch, born: born))
+        }
+        holdTracks = updated
+    }
+
+    /// Fires once when three fingers that landed together have stayed down for
+    /// `threeFingerHold`. Runs on the raw tracks, before the resting filter
+    /// drops fingers that have been down for more than `restingAfter`.
+    private func threeFingerHold(at time: TimeInterval) -> TapAction? {
+        guard config.threeFingerTap else { return nil }
+        if holdTracks.isEmpty { threeFingerFired = false }
+        guard !threeFingerFired, !dragging, !pinching, !navigating, holdTracks.count >= 3 else { return nil }
+        let margin = config.threeFingerEdgeMargin
+        let births = holdTracks.filter { $0.position.x >= margin && $0.position.x <= 1 - margin }
+            .map(\.born).sorted()
+        guard births.count >= 3 else { return nil }
+        for i in 0 ... births.count - 3
+        where births[i + 2] - births[i] <= config.threeFingerLanding
+            && time - births[i + 2] >= config.threeFingerHold {
+            threeFingerFired = true
+            session?.invalid = true
+            return .threeFingerTap
+        }
+        return nil
+    }
+
     /// Sensor y grows toward the tip of the mouse, so "up" is +y (open) and
     /// "down" is -y (close), like the trackpad.
     private func swipeGesture(from start: TouchPoint, centroid: TouchPoint) -> TapAction? {
@@ -273,8 +371,11 @@ public final class TapDetector {
         let wasDragging = dragging
         dragging = false
         pinching = false
+        navigating = false
+        threeFingerFired = false
         session = nil
         tracks = []
+        holdTracks = []
         lastTapEnd = nil
         return wasDragging
     }
@@ -304,7 +405,7 @@ public final class TapDetector {
                 available.remove(at: index)
             }
             updated.append(Track(position: touch, born: born))
-            if dragging || pinching || time - born < config.restingAfter { active.append(touch) }
+            if dragging || pinching || navigating || time - born < config.restingAfter { active.append(touch) }
         }
         tracks = updated
         return active
@@ -319,6 +420,10 @@ public final class TapDetector {
         if pinching {
             pinching = false
             return .magnify(0, .ended)
+        }
+        if navigating {
+            navigating = false
+            return .navigate(0, .ended)
         }
         guard let s = session, !s.invalid else { return nil }
 

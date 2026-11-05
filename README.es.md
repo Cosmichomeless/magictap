@@ -13,9 +13,11 @@ app de barra de menús, de código abierto, que lo añade al Magic Mouse:
 |---|---|
 | Toque con un dedo | Clic izquierdo |
 | Toque con dos dedos | Clic derecho |
+| Mantener tres dedos 0,5 s | Mostrar escritorio por defecto; configurable (clic central, Mission Control o nada) |
 | Dos toques seguidos (en menos de 0,5 s, con el ratón quieto) | Doble clic (abrir archivos y carpetas, seleccionar una palabra) |
 | Apoyar un dedo quieto ~0,25 s (sin mover el ratón) | El mismo arrastre, sin toque previo |
 | Deslizar 2 dedos hacia la punta / hacia ti | Abre / cierra Mission Control |
+| Deslizar 1 dedo a izquierda / derecha | Atrás / adelante en el navegador: Chrome muestra su flecha y vuelve si sigues el gesto, cancela si paras (gesto de scroll como el del trackpad) |
 | Pellizco con 2 dedos (separar / juntar) | Zoom fluido, como el trackpad (gesto de ampliación, no atajos de teclado) |
 | Toque, y volver a tocar y mantener quieto | Mantiene el botón pulsado; mueve el ratón para arrastrar (seleccionar texto, mover ventanas); levanta el dedo para soltar |
 
@@ -36,7 +38,7 @@ sin telemetría y sin acceso a la red.
 
 ## Descarga
 
-Descarga `MagicTap-0.1.0.dmg` desde la
+Descarga `MagicTap-0.2.0.dmg` desde la
 [última release](https://github.com/Cosmichomeless/magictap/releases/latest),
 ábrelo y arrastra **MagicTap** a **Aplicaciones**.
 
@@ -63,10 +65,18 @@ Sin `--install`, el script solo genera `build/MagicTap.app`.
 
 ## Uso
 
-Pulsa el icono del ratón en la barra de menús:
+Pulsa el icono del ratón en la barra de menús y elige **Settings…** (⌘,) para abrir la ventana:
+
+- **Gestures** — todos los interruptores y sliders de velocidad del toque, ventana del doble toque, tiempo para arrastrar, longitud del deslizamiento, velocidad del zoom y margen de agarre, con *Restore defaults*.
+- **Live** — un Magic Mouse dibujado con tus dedos encima (naranja = agarre, se ignora) y los gestos según se detectan. Útil para ajustar los sliders.
+- **Setup** — permiso de Accesibilidad y estado del ratón en vivo, más *Launch at login*. Se abre sola si falta el permiso.
+
+El menú tiene los mismos interruptores:
 
 - **Enabled** — interruptor general.
-- **Tap → left click** / **Two-finger tap → right click** / **Double tap → double click** / **Tap, then hold → drag** / **Rest finger → drag** / **Two-finger swipe up/down → Mission Control** / **Two-finger pinch → zoom** — activa o desactiva cada gesto.
+- **Tap → left click** / **Two-finger tap → right click** / **Double tap → double click** / **Tap, then hold → drag** / **Rest finger → drag** / / **Two-finger swipe up/down → Mission Control** / **Two-finger pinch → zoom** — activa o desactiva cada gesto.
+- **One-finger swipe left/right → back/forward** — activa o desactiva el gesto atrás/adelante.
+- **Three-finger hold** — apoya tres dedos medio segundo; elige qué hace: Show Desktop (por defecto), clic central, Mission Control o nada.
 - **Launch at login** — solo funciona desde la `.app` empaquetada.
 
 ### Probar sin hacer clics
@@ -104,7 +114,7 @@ Un contacto cuenta como toque solo si se cumple **todo** esto:
 2. Los dedos casi no se mueven (no es un scroll ni un deslizamiento).
 3. El cursor no se mueve más de 4 puntos (no estás simplemente moviendo el ratón).
 4. No hay una pulsación física del botón mientras tanto.
-5. Se usó exactamente un dedo (clic izquierdo) o dos (clic derecho).
+5. Se usó exactamente un dedo (clic izquierdo) o dos (clic derecho); con tres dedos hay que mantenerlos 0,5 s (acción de tres dedos).
 
 Estos valores están en [`TapConfig`](Sources/MagicTapCore/TapDetector.swift).
 La arquitectura, la API privada y la resolución de problemas están en

@@ -35,9 +35,177 @@ final class TapDetectorTests: XCTestCase {
         XCTAssertEqual(tap(detector(), fingers: two), .rightClick)
     }
 
-    func testThreeFingerTapIsIgnored() {
-        let three = [finger, TouchPoint(x: 0.6, y: 0.5), TouchPoint(x: 0.7, y: 0.5)]
+    private var three: [TouchPoint] {
+        [finger, TouchPoint(x: 0.6, y: 0.5), TouchPoint(x: 0.7, y: 0.5)]
+    }
+
+    /// Holds `fingers` from `t0` for `seconds`, a frame every 50 ms; returns the actions seen.
+    private func holdActions(
+        _ d: TapDetector, _ fingers: [TouchPoint], seconds: TimeInterval, from t0: TimeInterval = 10
+    ) -> [TapAction] {
+        var actions: [TapAction] = []
+        var t = t0
+        while t - t0 <= seconds {
+            if let a = d.process(time: t, touches: fingers, cursor: origin) { actions.append(a) }
+            t += 0.05
+        }
+        if let a = d.process(time: t, touches: [], cursor: origin) { actions.append(a) }
+        return actions
+    }
+
+    func testThreeFingerHoldIsReportedOnce() {
+        XCTAssertEqual(holdActions(detector(), three, seconds: 1.5), [.threeFingerTap])
+    }
+
+    func testThreeFingerHoldFiresWhileStillDown() {
+        let d = detector()
+        var fired: TimeInterval?
+        var t = 10.0
+        while t < 11.5, fired == nil {
+            if d.process(time: t, touches: three, cursor: origin) == .threeFingerTap { fired = t }
+            t += 0.05
+        }
+        XCTAssertNotNil(fired)
+        XCTAssertEqual(fired ?? 0, 10.5, accuracy: 0.06)
+    }
+
+    func testQuickThreeFingerTapDoesNothing() {
         XCTAssertNil(tap(detector(), fingers: three))
+        XCTAssertEqual(holdActions(detector(), three, seconds: 0.4), [])
+    }
+
+    func testThreeFingerHoldCanBeDisabled() {
+        XCTAssertEqual(holdActions(detector { $0.threeFingerTap = false }, three, seconds: 1.5), [])
+    }
+
+    func testTwoFingerHoldDoesNotTriggerThreeFingerAction() {
+        XCTAssertEqual(holdActions(detector(), Array(three.prefix(2)), seconds: 1.5), [])
+    }
+
+    func testThreeFingerHoldFiresAgainAfterLifting() {
+        let d = detector()
+        XCTAssertEqual(holdActions(d, three, seconds: 0.8), [.threeFingerTap])
+        XCTAssertEqual(holdActions(d, three, seconds: 0.8, from: 12), [.threeFingerTap])
+    }
+
+    func testRestingGripPlusOneFingerIsNotThreeFingerHold() {
+        let d = detector()
+        let t = hold(d, grip, seconds: 1)
+        // Grip has been down for a second; a third finger rests for over half a second.
+        let all = grip + [finger]
+        var actions: [TapAction] = []
+        var now = t
+        while now < t + 1 {
+            if let a = d.process(time: now, touches: all, cursor: origin) { actions.append(a) }
+            now += 0.05
+        }
+        XCTAssertFalse(actions.contains(.threeFingerTap))
+    }
+
+    func testThreeFingerHoldCountsEdgeContacts() {
+        // Real log: the ring finger often lands at the very edge.
+        let fingers = [TouchPoint(x: 0.58, y: 0.61), TouchPoint(x: 0.18, y: 0.47), TouchPoint(x: 0.97, y: 0.58)]
+        XCTAssertEqual(holdActions(detector(), fingers, seconds: 1), [.threeFingerTap])
+    }
+
+    func testThreeFingerHoldCanIgnoreTheSides() {
+        let fingers = [TouchPoint(x: 0.13, y: 0.81), TouchPoint(x: 0.91, y: 0.69), TouchPoint(x: 0.51, y: 0.85)]
+        XCTAssertEqual(holdActions(detector { $0.threeFingerEdgeMargin = 0.15 }, fingers, seconds: 1), [])
+    }
+
+    func testThreeFingerHoldTolerantOfStaggeredLanding() {
+        let d = detector()
+        var actions: [TapAction] = []
+        var t = 10.0
+        while t < 11.2 {
+            var fingers = [three[0]]
+            if t >= 10.05 { fingers.append(three[1]) }
+            if t >= 10.12 { fingers.append(three[2]) }
+            if let a = d.process(time: t, touches: fingers, cursor: origin) { actions.append(a) }
+            t += 0.03
+        }
+        XCTAssertEqual(actions, [.threeFingerTap])
+    }
+
+    func testThreeFingerHoldDoesNotStartADoubleClick() {
+        let d = detector()
+        XCTAssertEqual(holdActions(d, three, seconds: 0.8), [.threeFingerTap])
+        XCTAssertEqual(tap(d, fingers: [finger], at: 11.5), .leftClick)
+    }
+
+    // MARK: One-finger sideways swipe (back / forward)
+
+    /// Slides one finger along x from `from` to `to` in `steps` frames, then lifts.
+    private func slide(
+        _ d: TapDetector, from: Float, to: Float, y: Float = 0.5, steps: Int = 8,
+        start: TimeInterval = 10, step: TimeInterval = 0.02
+    ) -> [TapAction] {
+        var actions: [TapAction] = []
+        for i in 0...steps {
+            let x = from + (to - from) * Float(i) / Float(steps)
+            if let a = d.process(time: start + Double(i) * step, touches: [TouchPoint(x: x, y: y)], cursor: origin) {
+                actions.append(a)
+            }
+        }
+        if let a = d.process(time: start + Double(steps + 1) * step, touches: [], cursor: origin) {
+            actions.append(a)
+        }
+        return actions
+    }
+
+    func testSidewaysSlideBeginsContinuesAndEnds() throws {
+        let actions = slide(detector(), from: 0.3, to: 0.7)
+        guard case .navigate(_, .began) = try XCTUnwrap(actions.first) else { return XCTFail("\(actions)") }
+        XCTAssertEqual(actions.last, .navigate(0, .ended))
+        let total = actions.reduce(Float(0)) { sum, a in
+            if case let .navigate(dx, _) = a { return sum + dx }
+            return sum
+        }
+        XCTAssertEqual(total, 0.4, accuracy: 0.001)
+    }
+
+    func testSidewaysSlideLeftReportsNegativeMovement() {
+        let actions = slide(detector(), from: 0.7, to: 0.3)
+        guard case let .navigate(dx, .began)? = actions.first else { return XCTFail("\(actions)") }
+        XCTAssertLessThan(dx, 0)
+    }
+
+    func testSidewaysSlideDoesNotClick() {
+        XCTAssertFalse(slide(detector(), from: 0.3, to: 0.7).contains(.leftClick))
+    }
+
+    func testShortSlideIsNotANavigation() {
+        let actions = slide(detector(), from: 0.5, to: 0.53)
+        XCTAssertFalse(actions.contains { if case .navigate = $0 { return true } else { return false } })
+    }
+
+    func testVerticalSlideIsNotANavigation() {
+        let d = detector()
+        var actions: [TapAction] = []
+        for i in 0...8 {
+            let p = TouchPoint(x: 0.5 + Float(i) * 0.002, y: 0.3 + Float(i) * 0.04)
+            if let a = d.process(time: 10 + Double(i) * 0.02, touches: [p], cursor: origin) { actions.append(a) }
+        }
+        XCTAssertTrue(actions.isEmpty)
+    }
+
+    func testSlowSidewaysSlideKeepsGoingPastTheRestingTime() {
+        // A finger that moves for longer than `restingAfter` must not be dropped mid-swipe.
+        let actions = slide(detector(), from: 0.25, to: 0.75, steps: 20, step: 0.03)
+        XCTAssertEqual(actions.last, .navigate(0, .ended))
+        XCTAssertGreaterThan(actions.count, 10)
+    }
+
+    func testNavigationCanBeDisabled() {
+        let actions = slide(detector { $0.navigationSwipe = false }, from: 0.3, to: 0.7)
+        XCTAssertFalse(actions.contains { if case .navigate = $0 { return true } else { return false } })
+    }
+
+    func testSlideAfterATapIsNotANavigation() {
+        let d = detector()
+        XCTAssertEqual(tap(d, fingers: [finger]), .leftClick)
+        let actions = slide(d, from: 0.3, to: 0.7, start: 10.3)
+        XCTAssertFalse(actions.contains { if case .navigate = $0 { return true } else { return false } })
     }
 
     func testLongContactIsNotATap() {
@@ -185,6 +353,7 @@ final class TapDetectorTests: XCTestCase {
     }
 
     func testEdgeFilterCanBeDisabled() {
+        // Without the filter the two grip contacts count: three fingers, not a left click.
         XCTAssertNil(tap(detector { $0.edgeMargin = 0 }, fingers: edges + [finger]))
     }
 

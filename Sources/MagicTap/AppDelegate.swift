@@ -1,6 +1,5 @@
 import AppKit
 import MagicTapCore
-import ServiceManagement
 
 final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private let statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
@@ -10,6 +9,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private let debug: Bool
     private var lastFrame = Date()
     private var dragWatchdog: Timer?
+    private let settingsWindow = SettingsWindowController()
+    private var windowVisible = false
 
     init(debug: Bool) {
         self.debug = debug
@@ -18,13 +19,30 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         configureStatusItem()
+        settingsWindow.onVisibilityChange = { [weak self] visible in
+            self?.windowVisible = visible
+            if !visible { LiveModel.shared.clear() }
+        }
+        LiveModel.shared.mouseCount = { [weak self] in self?.monitor?.activeDeviceCount ?? 0 }
+        NotificationCenter.default.addObserver(
+            forName: .magicTapSettingsChanged, object: nil, queue: .main
+        ) { [weak self] _ in
+            guard let self else { return }
+            self.detector.config = Settings.tapConfig
+            self.statusItem.button?.appearsDisabled = !Settings.enabled
+            if !Settings.enabled { self.releaseDrag() }
+        }
 
         guard let api = MultitouchAPI.load() else {
             showFatal("MultitouchSupport is not available on this version of macOS.")
             return
         }
 
-        if !debug { ClickPoster.requestTrust() }
+        // First run without the permission: walk the user through it.
+        if !debug, !ClickPoster.isTrusted {
+            ClickPoster.requestTrust()
+            settingsWindow.show(tab: .setup)
+        }
 
         // A physical click while fingers are down must not also produce a tap.
         buttonMonitor = NSEvent.addGlobalMonitorForEvents(
@@ -60,15 +78,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         lastFrame = Date()
         guard Settings.enabled else {
             releaseDrag()
+            if windowVisible { LiveModel.shared.push(touches: touches, action: nil) }
             return
         }
         if debug {
             let fingers = touches.map { String(format: "(%.2f, %.2f)", $0.x, $0.y) }.joined(separator: " ")
             print(String(format: "%.3f  fingers=%d  %@", timestamp, touches.count, fingers))
         }
-        guard let action = detector.process(
+        let result = detector.process(
             time: timestamp, touches: touches, cursor: ClickPoster.cursorLocation
-        ) else {
+        )
+        if windowVisible { LiveModel.shared.push(touches: touches, action: result) }
+        guard let action = result else {
             if detector.isDragging, !debug, ClickPoster.isTrusted { ClickPoster.sendDragged() }
             return
         }
@@ -105,11 +126,21 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         menu.addItem(.separator())
         menu.addItem(item("Tap → left click", #selector(toggleLeft), checked: Settings.singleFingerLeftClick))
         menu.addItem(item("Two-finger tap → right click", #selector(toggleRight), checked: Settings.twoFingerRightClick))
+        let threeFinger = NSMenuItem(title: "Three-finger hold", action: nil, keyEquivalent: "")
+        let threeFingerMenu = NSMenu()
+        for action in ThreeFingerAction.allCases {
+            let option = item(action.title, #selector(pickThreeFingerAction(_:)), checked: Settings.threeFingerAction == action)
+            option.representedObject = action.rawValue
+            threeFingerMenu.addItem(option)
+        }
+        threeFinger.submenu = threeFingerMenu
+        menu.addItem(threeFinger)
         menu.addItem(item("Double tap → double click", #selector(toggleDoubleTap), checked: Settings.doubleTap))
         menu.addItem(item("Tap, then hold → drag", #selector(toggleDrag), checked: Settings.tapAndDrag))
         menu.addItem(item("Rest finger → drag", #selector(toggleHoldDrag), checked: Settings.holdToDrag))
         menu.addItem(item("Two-finger swipe up/down → Mission Control", #selector(toggleMissionControl), checked: Settings.missionControlSwipe))
         menu.addItem(item("Two-finger pinch → zoom", #selector(togglePinch), checked: Settings.pinchZoom))
+        menu.addItem(item("One-finger swipe left/right → back/forward", #selector(toggleNavigation), checked: Settings.navigationSwipe))
         menu.addItem(.separator())
 
         let mouseCount = monitor?.activeDeviceCount ?? 0
@@ -117,10 +148,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         menu.addItem(withTitle: mouseLine, action: nil, keyEquivalent: "").isEnabled = false
 
         if !ClickPoster.isTrusted {
-            menu.addItem(item("Grant Accessibility permission…", #selector(openAccessibility)))
+            menu.addItem(item("Grant Accessibility permission…", #selector(openSetup)))
         }
-        menu.addItem(item("Launch at login", #selector(toggleLaunchAtLogin), checked: SMAppService.mainApp.status == .enabled))
+        menu.addItem(item("Launch at login", #selector(toggleLaunchAtLogin), checked: LoginItem.isEnabled))
         menu.addItem(.separator())
+        menu.addItem(item("Settings…", #selector(openSettings), key: ","))
         menu.addItem(item("Quit MagicTap", #selector(NSApplication.terminate(_:)), key: "q"))
     }
 
@@ -147,6 +179,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         detector.config = Settings.tapConfig
     }
 
+    @objc private func pickThreeFingerAction(_ sender: NSMenuItem) {
+        guard let raw = sender.representedObject as? String, let action = ThreeFingerAction(rawValue: raw) else { return }
+        Settings.threeFingerAction = action
+        detector.config = Settings.tapConfig
+    }
+
     @objc private func toggleDoubleTap() {
         Settings.doubleTap.toggle()
         detector.config = Settings.tapConfig
@@ -167,25 +205,28 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         detector.config = Settings.tapConfig
     }
 
+    @objc private func openSettings() {
+        settingsWindow.show()
+    }
+
+    @objc private func toggleNavigation() {
+        Settings.navigationSwipe.toggle()
+        detector.config = Settings.tapConfig
+    }
+
     @objc private func togglePinch() {
         Settings.pinchZoom.toggle()
         detector.config = Settings.tapConfig
     }
 
-    @objc private func openAccessibility() {
+    @objc private func openSetup() {
         ClickPoster.requestTrust()
-        if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility") {
-            NSWorkspace.shared.open(url)
-        }
+        settingsWindow.show(tab: .setup)
     }
 
     @objc private func toggleLaunchAtLogin() {
         do {
-            if SMAppService.mainApp.status == .enabled {
-                try SMAppService.mainApp.unregister()
-            } else {
-                try SMAppService.mainApp.register()
-            }
+            try LoginItem.set(!LoginItem.isEnabled)
         } catch {
             // Only works from a bundled .app (scripts/build-app.sh), not `swift run`.
             let alert = NSAlert(error: error)

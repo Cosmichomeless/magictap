@@ -1,19 +1,57 @@
 import Foundation
 import MagicTapCore
 
+/// What a three-finger hold does (configurable; Show Desktop by default).
+enum ThreeFingerAction: String, CaseIterable, Identifiable {
+    case showDesktop, middleClick, missionControl, none
+    var id: String { rawValue }
+    var title: String {
+        switch self {
+        case .showDesktop: return "Show Desktop"
+        case .middleClick: return "Middle click"
+        case .missionControl: return "Mission Control"
+        case .none: return "Do nothing"
+        }
+    }
+}
+
 /// User preferences, persisted in UserDefaults.
 enum Settings {
     private static let defaults = UserDefaults.standard
 
-    private enum Key {
+    /// UserDefaults keys. The settings window binds to them with `@AppStorage`,
+    /// so the menu and the window stay in sync without extra plumbing.
+    enum Key {
         static let enabled = "enabled"
         static let leftTap = "singleFingerLeftClick"
         static let rightTap = "twoFingerRightClick"
+        static let threeFingerAction = "threeFingerAction"
         static let tapAndDrag = "tapAndDrag"
         static let holdToDrag = "holdToDrag"
         static let doubleTap = "doubleTap"
         static let missionControlSwipe = "missionControlSwipe"
         static let pinchZoom = "pinchZoom"
+        static let navigationSwipe = "navigationSwipe"
+        // Tuning (sliders in the settings window).
+        static let maxTapDuration = "maxTapDuration"
+        static let doubleTapWindow = "doubleTapWindow"
+        static let holdToDragAfter = "holdToDragAfter"
+        static let swipeDistance = "swipeDistance"
+        static let pinchGain = "pinchGain"
+        static let edgeMargin = "edgeMargin"
+        static let tuningKeys = [
+            maxTapDuration, doubleTapWindow, holdToDragAfter, swipeDistance,
+            pinchGain, edgeMargin,
+        ]
+    }
+
+    /// Back to the built-in thresholds.
+    static func resetTuning() {
+        for key in Key.tuningKeys { defaults.removeObject(forKey: key) }
+    }
+
+    private static func number(_ key: String, default value: Double) -> Double {
+        defaults.object(forKey: key) as? Double ?? value
     }
 
     static var enabled: Bool {
@@ -29,6 +67,12 @@ enum Settings {
     static var twoFingerRightClick: Bool {
         get { defaults.object(forKey: Key.rightTap) as? Bool ?? true }
         set { defaults.set(newValue, forKey: Key.rightTap) }
+    }
+
+    /// What a three-finger hold does. Show Desktop unless the user picked another.
+    static var threeFingerAction: ThreeFingerAction {
+        get { defaults.string(forKey: Key.threeFingerAction).flatMap(ThreeFingerAction.init) ?? .showDesktop }
+        set { defaults.set(newValue.rawValue, forKey: Key.threeFingerAction) }
     }
 
     static var tapAndDrag: Bool {
@@ -56,15 +100,34 @@ enum Settings {
         set { defaults.set(newValue, forKey: Key.pinchZoom) }
     }
 
+    static var navigationSwipe: Bool {
+        get { defaults.object(forKey: Key.navigationSwipe) as? Bool ?? true }
+        set { defaults.set(newValue, forKey: Key.navigationSwipe) }
+    }
+
+    /// Pixels of synthetic scroll per unit of finger travel (the sensor is 1 wide).
+    /// Chrome navigates when the swipe passes a fraction of the window width.
+    static var navigationGain: Double { 1500 }
+
     static var tapConfig: TapConfig {
         var config = TapConfig()
         config.singleFingerLeftClick = singleFingerLeftClick
         config.twoFingerRightClick = twoFingerRightClick
+        config.threeFingerTap = threeFingerAction != .none
         config.tapAndDrag = tapAndDrag
         config.holdToDrag = holdToDrag
         config.doubleTap = doubleTap
         config.missionControlSwipe = missionControlSwipe
         config.pinchZoom = pinchZoom
+        config.navigationSwipe = navigationSwipe
+        let base = TapConfig()
+        config.maxTapDuration = number(Key.maxTapDuration, default: base.maxTapDuration)
+        config.doubleTapWindow = number(Key.doubleTapWindow, default: base.doubleTapWindow)
+        // Must stay below `restingAfter`, which stops counting a resting finger.
+        config.holdToDragAfter = min(number(Key.holdToDragAfter, default: base.holdToDragAfter), config.restingAfter - 0.02)
+        config.swipeDistance = Float(number(Key.swipeDistance, default: Double(base.swipeDistance)))
+        config.pinchGain = Float(number(Key.pinchGain, default: Double(base.pinchGain)))
+        config.edgeMargin = Float(number(Key.edgeMargin, default: Double(base.edgeMargin)))
         return config
     }
 }

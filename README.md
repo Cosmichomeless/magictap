@@ -13,9 +13,11 @@ menu bar app that adds it to the Magic Mouse:
 |---|---|
 | Tap with one finger | Left click |
 | Tap with two fingers | Right click |
+| Hold three fingers for 0.5 s | Show Desktop by default; configurable (middle click, Mission Control or nothing) |
 | Tap twice quickly (within 0.5 s, mouse still) | Double click (open files and folders, select a word) |
 | Rest one finger still for ~0.25 s (mouse not moving) | Same drag, without a prior tap |
 | Swipe two fingers toward the tip / toward you | Opens / closes Mission Control |
+| Slide one finger left / right | Back / forward in the browser: Chrome shows its arrow and goes back if you keep going, cancels if you stop (a trackpad-style scroll gesture) |
 | Pinch two fingers apart / together | Smooth zoom in / out, like the trackpad (a magnify gesture, not keyboard shortcuts) |
 | Tap, then touch again and hold still | Press and hold the button; move the mouse to drag (select text, move windows); lift the finger to release |
 
@@ -36,7 +38,7 @@ telemetry, no network access.
 
 ## Download
 
-Grab `MagicTap-0.1.0.dmg` from the
+Grab `MagicTap-0.2.0.dmg` from the
 [latest release](https://github.com/Cosmichomeless/magictap/releases/latest),
 open it and drag **MagicTap** to **Applications**.
 
@@ -63,10 +65,18 @@ Use `scripts/build-app.sh` without `--install` to only build `build/MagicTap.app
 
 ## Usage
 
-Click the mouse icon in the menu bar:
+Click the mouse icon in the menu bar, then **Settings…** (⌘,) for the window:
+
+- **Gestures** — every switch, plus sliders for tap speed, double-tap window, hold-to-drag time, swipe length, zoom speed and grip margin, with *Restore defaults*.
+- **Live** — a Magic Mouse drawn on screen with your fingers on it (orange = grip, ignored) and the gestures as they are detected. Handy for tuning the sliders.
+- **Setup** — Accessibility permission and Magic Mouse status, updated live, plus *Launch at login*. It opens by itself when the permission is missing.
+
+The menu has the same switches:
 
 - **Enabled** — master switch.
 - **Tap → left click** / **Two-finger tap → right click** — toggle each gesture.
+- **One-finger swipe left/right → back/forward** — toggle the browser swipe.
+- **Three-finger hold** — rest three fingers for half a second; pick what it does: Show Desktop (default), middle click, Mission Control or nothing.
 - **Double tap → double click** — toggle the double click.
 - **Tap, then hold → drag** — toggle tap-and-drag.
 - **Rest finger → drag** — toggle the drag that needs no prior tap.
@@ -108,7 +118,7 @@ A touch counts as a tap only if **all** of these hold:
 2. The fingers barely move (it is not a scroll or swipe).
 3. The cursor does not move more than 4 points (you are not just moving the mouse).
 4. No physical button press happens meanwhile.
-5. Exactly one finger (left click) or two fingers (right click) were used.
+5. Exactly one finger (left click) or two (right click) were used; three fingers need to be held 0.5 s instead (three-finger action).
 
 These defaults live in [`TapConfig`](Sources/MagicTapCore/TapDetector.swift).
 See [docs/how-it-works.md](docs/how-it-works.md) for the architecture, the

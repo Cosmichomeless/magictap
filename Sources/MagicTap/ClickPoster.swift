@@ -29,6 +29,15 @@ enum ClickPoster {
         case .rightClick:
             send(.rightMouseDown, button: .right, at: cursorLocation)
             send(.rightMouseUp, button: .right, at: cursorLocation)
+        case .threeFingerTap:
+            switch Settings.threeFingerAction {
+            case .showDesktop: showDesktop()
+            case .middleClick:
+                send(.otherMouseDown, button: .center, at: cursorLocation)
+                send(.otherMouseUp, button: .center, at: cursorLocation)
+            case .missionControl: openMissionControl()
+            case .none: break
+            }
         case .dragStart:
             send(.leftMouseDown, button: .left, at: dragOrigin)
             // Catch the cursor up to where the mouse has moved since the touch.
@@ -36,10 +45,7 @@ enum ClickPoster {
         case .dragEnd:
             send(.leftMouseUp, button: .left, at: cursorLocation)
         case .missionControl:
-            missionControlOpen = true
-            DispatchQueue.main.async {
-                NSWorkspace.shared.open(URL(fileURLWithPath: "/System/Applications/Mission Control.app"))
-            }
+            openMissionControl()
         case .missionControlClose:
             // Escape would go to the frontmost app if Mission Control isn't
             // actually open, so only send it after we opened it ourselves.
@@ -48,6 +54,28 @@ enum ClickPoster {
             sendKey(CGKeyCode(kVK_Escape), flags: [])
         case let .magnify(amount, phase):
             sendMagnify(Double(amount), phase)
+        case let .navigate(amount, phase):
+            sendSidewaysScroll(Double(amount) * Settings.navigationGain, phase)
+        }
+    }
+
+    private static func openMissionControl() {
+        missionControlOpen = true
+        DispatchQueue.main.async {
+            NSWorkspace.shared.open(URL(fileURLWithPath: "/System/Applications/Mission Control.app"))
+        }
+    }
+
+    /// Toggles Show Desktop. Asks the Dock directly (what the trackpad gesture
+    /// does), so it works even if the F11 shortcut is changed or disabled; falls
+    /// back to F11 if that private call is missing.
+    private static func showDesktop() {
+        typealias Notify = @convention(c) (CFString, Int32) -> Int32
+        let path = "/System/Library/Frameworks/ApplicationServices.framework/ApplicationServices"
+        if let handle = dlopen(path, RTLD_NOW), let symbol = dlsym(handle, "CoreDockSendNotification") {
+            _ = unsafeBitCast(symbol, to: Notify.self)("com.apple.showdesktop.awake" as CFString, 0)
+        } else {
+            sendKey(CGKeyCode(kVK_F11), flags: [])
         }
     }
 
@@ -60,6 +88,27 @@ enum ClickPoster {
             event.flags = flags
             event.post(tap: .cghidEventTap)
         }
+    }
+
+    /// Posts one phase of a trackpad-style horizontal scroll. Browsers show their
+    /// back / forward arrow from scroll events with phases, and navigate if the
+    /// gesture carries on (or cancel it if it stops short).
+    private static func sendSidewaysScroll(_ pixels: Double, _ phase: GesturePhase) {
+        guard let event = CGEvent(
+            scrollWheelEvent2Source: source, units: .pixel, wheelCount: 2,
+            wheel1: 0, wheel2: Int32(pixels.rounded()), wheel3: 0
+        ) else { return }
+        event.setIntegerValueField(.scrollWheelEventIsContinuous, value: 1)
+        event.setDoubleValueField(.scrollWheelEventFixedPtDeltaAxis2, value: pixels)
+        event.setDoubleValueField(.scrollWheelEventPointDeltaAxis2, value: pixels)
+        let value: Int64
+        switch phase {
+        case .began: value = 1
+        case .changed: value = 2
+        case .ended: value = 4
+        }
+        event.setIntegerValueField(.scrollWheelEventScrollPhase, value: value)
+        event.post(tap: .cghidEventTap)
     }
 
     /// Posts a trackpad-style magnify gesture. These are undocumented CGEvent
