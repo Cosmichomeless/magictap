@@ -17,9 +17,10 @@ IDENTITY="${SIGN_IDENTITY:--}"
 swift build -c release
 
 rm -rf "$APP"
-mkdir -p "$APP/Contents/MacOS"
+mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 cp "$(swift build -c release --show-bin-path)/MagicTap" "$APP/Contents/MacOS/MagicTap"
 cp Resources/Info.plist "$APP/Contents/Info.plist"
+cp Resources/AppIcon.icns "$APP/Contents/Resources/AppIcon.icns" # regenerate with: swift scripts/make-icon.swift
 
 codesign --force --sign "$IDENTITY" "$APP"
 echo "Built $APP (signed with: ${IDENTITY/#-/ad-hoc})"
