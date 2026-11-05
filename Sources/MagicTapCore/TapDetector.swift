@@ -18,6 +18,8 @@ public enum GesturePhase: Equatable {
 
 public enum TapAction: Equatable {
     case leftClick
+    /// Second tap of a double tap: a click with click count 2.
+    case doubleClick
     case rightClick
     /// Button goes down at `TapDetector.dragOrigin` (tap-and-drag started).
     case dragStart
@@ -60,6 +62,12 @@ public struct TapConfig: Equatable {
     /// longer than `maxTapDuration`: the button is held until the finger lifts.
     public var dragWindow: TimeInterval = 0.6
     public var tapAndDrag = true
+    /// Two quick taps in a row become a double click: the second tap must start
+    /// within this time of the first one ending, and within `doubleTapRadius`
+    /// points of it. macOS's own default double-click interval is 0.5 s.
+    public var doubleTap = true
+    public var doubleTapWindow: TimeInterval = 0.5
+    public var doubleTapRadius: CGFloat = 8
     /// Rest one finger without moving it (nor the mouse) for this long and the
     /// button goes down, no prior tap needed. Must stay below `restingAfter`,
     /// which stops counting the finger.
@@ -98,6 +106,8 @@ public final class TapDetector {
         var invalid: Bool
         /// Started shortly after a left-click tap: may turn into a drag.
         var followsTap: Bool
+        /// Started right after a left-click tap, close to it: may be a double click.
+        var followsDoubleTap: Bool
         /// Where the two fingers were when the second one landed.
         var pairCentroid: TouchPoint?
         var pairDistance: Float = 0
@@ -114,6 +124,7 @@ public final class TapDetector {
     private var session: Session?
     private var tracks: [Track] = []
     private var lastTapEnd: TimeInterval?
+    private var lastTapCursor: CGPoint = .zero
     private var dragging = false
     private var pinching = false
 
@@ -149,7 +160,10 @@ public final class TapDetector {
                 travel: 0,
                 invalid: false,
                 followsTap: config.tapAndDrag && touches.count == 1
-                    && lastTapEnd.map { time - $0 <= config.dragWindow } == true
+                    && lastTapEnd.map { time - $0 <= config.dragWindow } == true,
+                followsDoubleTap: config.doubleTap && touches.count == 1
+                    && lastTapEnd.map { time - $0 <= config.doubleTapWindow } == true
+                    && Self.distance(cursor, lastTapCursor) <= config.doubleTapRadius
             )
             lastTapEnd = nil
             return nil
@@ -315,7 +329,13 @@ public final class TapDetector {
 
         switch s.maxFingers {
         case 1 where config.singleFingerLeftClick:
+            if s.followsDoubleTap {
+                // A third tap starts a new pair instead of chaining.
+                lastTapEnd = nil
+                return .doubleClick
+            }
             lastTapEnd = time
+            lastTapCursor = cursor
             return .leftClick
         case 2 where config.twoFingerRightClick: return .rightClick
         default: return nil

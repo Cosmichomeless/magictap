@@ -256,11 +256,53 @@ final class TapDetectorTests: XCTestCase {
         XCTAssertTrue(d.isDragging)
     }
 
-    func testSecondQuickTapIsAnotherClickNotADrag() {
+    func testSecondQuickTapIsADoubleClickNotADrag() {
         let d = detector()
         XCTAssertEqual(tap(d, fingers: [finger], at: 10), .leftClick)
-        XCTAssertEqual(tap(d, fingers: [finger], at: 10.2), .leftClick)
+        XCTAssertEqual(tap(d, fingers: [finger], at: 10.2), .doubleClick)
         XCTAssertFalse(d.isDragging)
+    }
+
+    func testThirdTapStartsANewPair() {
+        let d = detector()
+        XCTAssertEqual(tap(d, fingers: [finger], at: 10), .leftClick)
+        XCTAssertEqual(tap(d, fingers: [finger], at: 10.2), .doubleClick)
+        XCTAssertEqual(tap(d, fingers: [finger], at: 10.4), .leftClick)
+        XCTAssertEqual(tap(d, fingers: [finger], at: 10.6), .doubleClick)
+    }
+
+    func testSecondTapAfterTheWindowIsASingleClick() {
+        let d = detector()
+        XCTAssertEqual(tap(d, fingers: [finger], at: 10), .leftClick)
+        XCTAssertEqual(tap(d, fingers: [finger], at: 10.7), .leftClick)
+    }
+
+    func testDoubleTapNeedsTheCursorToStayPut() {
+        let d = detector()
+        XCTAssertEqual(tap(d, fingers: [finger], at: 10), .leftClick)
+        // The mouse moved a long way between the taps: a new target.
+        XCTAssertNil(d.process(time: 10.2, touches: [finger], cursor: CGPoint(x: 400, y: 300)))
+        XCTAssertNil(d.process(time: 10.24, touches: [finger], cursor: CGPoint(x: 400, y: 300)))
+        XCTAssertEqual(d.process(time: 10.28, touches: [], cursor: CGPoint(x: 400, y: 300)), .leftClick)
+    }
+
+    func testDoubleTapWorksWithTapAndDragOff() {
+        let d = detector { $0.tapAndDrag = false }
+        XCTAssertEqual(tap(d, fingers: [finger], at: 10), .leftClick)
+        XCTAssertEqual(tap(d, fingers: [finger], at: 10.2), .doubleClick)
+    }
+
+    func testDoubleTapCanBeDisabled() {
+        let d = detector { $0.doubleTap = false }
+        XCTAssertEqual(tap(d, fingers: [finger], at: 10), .leftClick)
+        XCTAssertEqual(tap(d, fingers: [finger], at: 10.2), .leftClick)
+    }
+
+    func testTapThenHoldStillDragsWithDoubleTapOn() {
+        let d = detector()
+        _ = tap(d, fingers: [finger], at: 10)
+        let actions = press(d, from: 10.2, seconds: 0.5)
+        XCTAssertEqual(actions, [.dragStart])
     }
 
     func testScrollRightAfterATapIsNotADrag() {

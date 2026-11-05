@@ -22,6 +22,10 @@ enum ClickPoster {
             missionControlOpen = false
             send(.leftMouseDown, button: .left, at: cursorLocation)
             send(.leftMouseUp, button: .left, at: cursorLocation)
+        case .doubleClick:
+            missionControlOpen = false
+            send(.leftMouseDown, button: .left, at: cursorLocation, clickCount: 2)
+            send(.leftMouseUp, button: .left, at: cursorLocation, clickCount: 2)
         case .rightClick:
             send(.rightMouseDown, button: .right, at: cursorLocation)
             send(.rightMouseUp, button: .right, at: cursorLocation)
@@ -91,7 +95,9 @@ enum ClickPoster {
     /// Last position we posted, to give drag events a real delta.
     private static var lastPosted: CGPoint?
 
-    private static func send(_ type: CGEventType, button: CGMouseButton, at location: CGPoint) {
+    private static func send(
+        _ type: CGEventType, button: CGMouseButton, at location: CGPoint, clickCount: Int64 = 1
+    ) {
         guard let event = CGEvent(
             mouseEventSource: source, mouseType: type,
             mouseCursorPosition: location, mouseButton: button
@@ -99,7 +105,7 @@ enum ClickPoster {
         if type != .leftMouseDragged {
             ignoreButtonEventsUntil = Date().addingTimeInterval(0.15)
         }
-        event.setIntegerValueField(.mouseEventClickState, value: 1)
+        event.setIntegerValueField(.mouseEventClickState, value: clickCount)
         // Text views (unlike Finder) read the motion and pressure of a drag.
         if type == .leftMouseDragged {
             let from = lastPosted ?? location

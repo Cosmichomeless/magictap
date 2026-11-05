@@ -105,6 +105,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         menu.addItem(.separator())
         menu.addItem(item("Tap → left click", #selector(toggleLeft), checked: Settings.singleFingerLeftClick))
         menu.addItem(item("Two-finger tap → right click", #selector(toggleRight), checked: Settings.twoFingerRightClick))
+        menu.addItem(item("Double tap → double click", #selector(toggleDoubleTap), checked: Settings.doubleTap))
         menu.addItem(item("Tap, then hold → drag", #selector(toggleDrag), checked: Settings.tapAndDrag))
         menu.addItem(item("Rest finger → drag", #selector(toggleHoldDrag), checked: Settings.holdToDrag))
         menu.addItem(item("Two-finger swipe up/down → Mission Control", #selector(toggleMissionControl), checked: Settings.missionControlSwipe))
@@ -143,6 +144,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     @objc private func toggleRight() {
         Settings.twoFingerRightClick.toggle()
+        detector.config = Settings.tapConfig
+    }
+
+    @objc private func toggleDoubleTap() {
+        Settings.doubleTap.toggle()
         detector.config = Settings.tapConfig
     }
 

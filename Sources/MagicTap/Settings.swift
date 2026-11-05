@@ -11,6 +11,7 @@ enum Settings {
         static let rightTap = "twoFingerRightClick"
         static let tapAndDrag = "tapAndDrag"
         static let holdToDrag = "holdToDrag"
+        static let doubleTap = "doubleTap"
         static let missionControlSwipe = "missionControlSwipe"
         static let pinchZoom = "pinchZoom"
     }
@@ -40,6 +41,11 @@ enum Settings {
         set { defaults.set(newValue, forKey: Key.holdToDrag) }
     }
 
+    static var doubleTap: Bool {
+        get { defaults.object(forKey: Key.doubleTap) as? Bool ?? true }
+        set { defaults.set(newValue, forKey: Key.doubleTap) }
+    }
+
     static var missionControlSwipe: Bool {
         get { defaults.object(forKey: Key.missionControlSwipe) as? Bool ?? true }
         set { defaults.set(newValue, forKey: Key.missionControlSwipe) }
@@ -56,6 +62,7 @@ enum Settings {
         config.twoFingerRightClick = twoFingerRightClick
         config.tapAndDrag = tapAndDrag
         config.holdToDrag = holdToDrag
+        config.doubleTap = doubleTap
         config.missionControlSwipe = missionControlSwipe
         config.pinchZoom = pinchZoom
         return config
