@@ -1,0 +1,116 @@
+# How MagicTap works
+
+## Pipeline
+
+```
+Magic Mouse ──► MultitouchSupport (private) ──► contact callback
+                                                      │  (private thread)
+                                                      ▼
+                                          main queue: [TouchPoint] + timestamp
+                                                      │
+                                                      ▼
+                                       TapDetector.process(...)  ──► TapAction?
+                                                      │
+                                                      ▼
+                                       ClickPoster.post → CGEvent → HID event tap
+```
+
+| Piece | File | Responsibility |
+|---|---|---|
+| `MultitouchAPI` | `Sources/MagicTap/Multitouch.swift` | Loads the private framework with `dlopen`/`dlsym`; fixed-offset reader for the touch records |
+| `MouseMonitor` | `Sources/MagicTap/MouseMonitor.swift` | Picks the Magic Mouse among devices, registers the callback, rescans on wake and every 5 s |
+| `TapDetector` | `Sources/MagicTapCore/TapDetector.swift` | Pure state machine: frames in, tap action out. No AppKit, no hardware |
+| `ClickPoster` | `Sources/MagicTap/ClickPoster.swift` | Posts left/right mouse down+up; Accessibility trust check |
+| `AppDelegate` | `Sources/MagicTap/AppDelegate.swift` | Menu bar UI, wiring, physical-click monitor |
+| `Settings` | `Sources/MagicTap/Settings.swift` | `UserDefaults` preferences → `TapConfig` |
+
+The recognition logic lives in its own target (`MagicTapCore`) precisely so it
+can be tested without a mouse: tests feed synthetic frames and assert the result.
+
+## Identifying the Magic Mouse
+
+`MTDeviceCreateList()` returns every multitouch surface: built-in trackpad,
+Magic Trackpad, Magic Mouse. MagicTap keeps a device only if it is **not
+built-in** and its sensor surface is **taller than wide**.
+
+Measured on one machine (macOS 27, Magic Mouse USB-C):
+
+| Device | familyID | `MTDeviceGetSensorSurfaceDimensions` | built-in |
+|---|---|---|---|
+| MacBook trackpad | 109 | 12480 × 7680 | yes |
+| Magic Mouse | 112 | 5152 × 9056 | no |
+
+The aspect-ratio rule is used instead of hard-coding `familyID == 112` so other
+Magic Mouse generations keep working. A Magic Trackpad is landscape and is skipped.
+
+## The touch record (private API)
+
+The contact callback has the shape:
+
+```c
+void callback(MTDeviceRef device, MTTouch *touches, int count, double timestamp, int frame);
+```
+
+Each `MTTouch` record is 96 bytes. MagicTap reads only three fields at fixed
+offsets rather than mirroring the whole undocumented struct:
+
+| Offset | Type | Field |
+|---|---|---|
+| 20 | `Int32` | state (3 = making contact, 4 = touching; others are hover/linger/leave) |
+| 32 | `Float` | normalized X (0…1) |
+| 36 | `Float` | normalized Y (0…1) |
+
+> These offsets come from community reverse-engineering of the framework and
+> should be re-verified on new macOS releases. Run `swift run MagicTap --debug`
+> and touch the mouse: the printed coordinates must change smoothly in 0…1.
+
+## Tap recognition rules
+
+One *session* starts when the first finger touches and ends on the frame with
+no fingers. The session yields a tap only if:
+
+- duration is within `minTapDuration` (20 ms) … `maxTapDuration` (200 ms);
+- accumulated finger path ≤ `maxFingerTravel` (0.04 normalized units). Motion
+  is only measured between frames with the *same* finger count, because adding
+  or removing a finger moves the centroid without any real movement;
+- the cursor moved ≤ `maxCursorTravel` (4 pt) between start and end;
+- no physical button event was observed during the session (the global
+  monitor calls `noteButtonEvent()`; events caused by MagicTap itself are ignored
+  for 150 ms);
+- the maximum finger count was 1 (left click) or 2 (right click).
+
+## Why a synthetic click does not loop
+
+`ClickPoster.post` sets `ignoreButtonEventsUntil` before posting. The global
+button monitor skips events inside that window, so MagicTap never mistakes its
+own click for a physical one.
+
+## Tuning
+
+Edit the defaults in `TapConfig` (`Sources/MagicTapCore/TapDetector.swift`):
+
+| Symptom | Adjust |
+|---|---|
+| Taps are missed | Raise `maxTapDuration` / `maxFingerTravel` |
+| Clicks fire while you just hold or move the mouse | Lower `maxTapDuration`, `maxCursorTravel` or `maxFingerTravel` |
+| Single-finger taps misfire a lot | Turn off *Tap → left click* and keep the two-finger right click |
+
+Use `--debug` to see durations and finger positions of your own taps.
+
+## Troubleshooting
+
+**Menu says "No Magic Mouse found".** Check the mouse is connected over
+Bluetooth or USB-C. The list refreshes every 5 s and on wake.
+
+**Taps are detected in `--debug` but nothing clicks.** Accessibility permission
+is missing. Menu → *Grant Accessibility permission…*. After rebuilding with the
+ad-hoc signature you may need to remove and re-add MagicTap in that list.
+
+**Double clicks.** Your physical click and a tap overlapped. The detector cancels
+taps during physical presses; if it still happens, lower `maxTapDuration`.
+
+**"Launch at login" shows an error.** It only works from the bundled `.app`
+(`scripts/build-app.sh`), not from `swift run`.
+
+**Stopped working after a macOS update.** The private API likely changed. Run
+`swift run MagicTap --debug` and open an issue with the macOS version and the output.
