@@ -23,6 +23,7 @@ Magic Mouse ──► MultitouchSupport (private) ──► contact callback
 | `ClickPoster` | `Sources/MagicTap/ClickPoster.swift` | Posts left/right mouse down+up; Accessibility trust check |
 | `AppDelegate` | `Sources/MagicTap/AppDelegate.swift` | Menu bar UI, wiring, physical-click monitor |
 | `Settings` | `Sources/MagicTap/Settings.swift` | `UserDefaults` preferences → `TapConfig` |
+| Settings window | `Sources/MagicTap/UI/` | SwiftUI window (gestures, live view, setup); writes `UserDefaults` and posts `.magicTapSettingsChanged` |
 
 The recognition logic lives in its own target (`MagicTapCore`) precisely so it
 can be tested without a mouse: tests feed synthetic frames and assert the result.
@@ -164,3 +165,33 @@ separation from the frame the second one landed.
   113 = magnification, 132 = phase, which apps receive as `NSEvent.magnify`
   (Chrome shows it as smooth page zoom). Keyboard shortcuts (⌘+/⌘−) were tried
   first but are stepwise and depend on the keyboard layout.
+
+## One-finger swipe (back / forward)
+
+A single finger that moves sideways by `navigationStartDistance` (0.05) with
+`|dy| <= |dx| / 2` starts `.navigate(dx, .began)`, then `.navigate(delta, .changed)`
+every frame and `.ended` when it lifts. `ClickPoster` turns each phase into a
+horizontal scroll event with scroll phases (gain `navigationGain`, 1500 px per
+sensor unit), which browsers show as their back / forward arrow and act on if the
+gesture carries on. The native one-finger gesture is not used; it does not fire on
+every setup. Keyboard shortcuts (⌘←/⌘→) were rejected because they jump at once.
+
+## Three-finger hold
+
+A quick three-finger tap is unreliable on this surface: real attempts last
+0.2-0.4 s and the third finger often lands at the edge. So the gesture is a hold.
+`TapDetector` keeps a separate tracker of **all** contacts (edges included,
+`threeFingerEdgeMargin` 0), evaluated before the resting-finger filter. It fires
+`.threeFingerTap` once when three contacts that landed within `threeFingerLanding`
+(0.25 s) have all been down for `threeFingerHold` (0.5 s), then waits until the
+fingers lift. The action comes from `Settings.threeFingerAction`: Show Desktop
+(default), middle click, Mission Control or nothing.
+
+Show Desktop calls `CoreDockSendNotification("com.apple.showdesktop.awake", 0)`
+(private API, loaded with `dlopen`/`dlsym` from ApplicationServices), which is a
+toggle; F11 is sent if the symbol is missing.
+
+**Known cost.** Gripping the mouse by the sides with one more finger resting can
+count as three fingers. In a 75 s recording that happened 5 times at 0.5 s, once at
+0.9 s and never with an edge margin of 0.15. If it bothers you, raise
+`threeFingerHold` or `threeFingerEdgeMargin`, or set the action to *Do nothing*.

@@ -26,7 +26,7 @@ telemetry, no network access.
 
 [Leer en español](README.es.md)
 
-> **Status: early prototype (v0.1).** The recognition logic is unit-tested, but
+> **Status: early prototype (v0.2).** The recognition logic is unit-tested, but
 > thresholds are tuned by feel and the multitouch layer relies on a private
 > Apple API. See [Limitations](#limitations).
 

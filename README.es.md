@@ -26,7 +26,7 @@ sin telemetría y sin acceso a la red.
 
 [Read in English](README.md)
 
-> **Estado: prototipo inicial (v0.1).** La lógica de reconocimiento tiene tests
+> **Estado: prototipo inicial (v0.2).** La lógica de reconocimiento tiene tests
 > unitarios, pero los umbrales están ajustados "a ojo" y la capa multitáctil usa
 > una API privada de Apple. Mira [Limitaciones](#limitaciones).
 
