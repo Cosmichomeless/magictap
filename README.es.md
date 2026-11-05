@@ -1,3 +1,5 @@
+<p align="center"><img src="docs/images/icon.png" width="96" alt="MagicTap icon"></p>
+
 # MagicTap
 
 **Tocar para hacer clic en el Magic Mouse de Apple, en macOS.**
@@ -5,10 +7,16 @@
 macOS solo ofrece *Tocar para hacer clic* en trackpads. MagicTap es una pequeña
 app de barra de menús, de código abierto, que lo añade al Magic Mouse:
 
+![Gestos de MagicTap en el Magic Mouse](docs/images/gestures.svg)
+
 | Gesto | Acción |
 |---|---|
 | Toque con un dedo | Clic izquierdo |
 | Toque con dos dedos | Clic derecho |
+| Apoyar un dedo quieto ~0,25 s (sin mover el ratón) | El mismo arrastre, sin toque previo |
+| Deslizar 2 dedos hacia la punta / hacia ti | Abre / cierra Mission Control |
+| Pellizco con 2 dedos (separar / juntar) | Zoom fluido, como el trackpad (gesto de ampliación, no atajos de teclado) |
+| Toque, y volver a tocar y mantener quieto | Mantiene el botón pulsado; mueve el ratón para arrastrar (seleccionar texto, mover ventanas); levanta el dedo para soltar |
 
 Los clics físicos siguen funcionando igual. Sin icono en el Dock, sin ventanas,
 sin telemetría y sin acceso a la red.
@@ -45,7 +53,7 @@ Sin `--install`, el script solo genera `build/MagicTap.app`.
 Pulsa el icono del ratón en la barra de menús:
 
 - **Enabled** — interruptor general.
-- **Tap → left click** / **Two-finger tap → right click** — activa o desactiva cada gesto.
+- **Tap → left click** / **Two-finger tap → right click** / **Tap, then hold → drag** / **Rest finger → drag** / **Two-finger swipe up/down → Mission Control** / **Two-finger pinch → zoom** — activa o desactiva cada gesto.
 - **Launch at login** — solo funciona desde la `.app` empaquetada.
 
 ### Probar sin hacer clics
@@ -56,6 +64,16 @@ swift run MagicTap --debug
 
 `--debug` imprime cada fotograma táctil y cada toque reconocido, y **nunca
 genera clics**. Sirve para comprobar que tu ratón se detecta y ver cómo son tus toques.
+
+### Tocar y arrastrar
+
+Como el "tocar para arrastrar" del trackpad: toca una vez y, antes de 0,6 s,
+vuelve a tocar y mantén ese dedo quieto. Tras unos 0,2 s el botón se pulsa donde
+empezó el toque. Mueve el ratón como siempre para arrastrar y levanta el dedo para
+soltar. Si deslizas el dedo es un scroll normal y no empieza un arrastre.
+
+También puedes saltarte el toque: apoya un dedo sin moverlo (ni el ratón) unos
+0,25 s y el botón se pulsa. Tiene que ser menos que el filtro de agarre (0,3 s).
 
 ## Cómo se reconoce un toque
 

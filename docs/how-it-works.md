@@ -79,6 +79,26 @@ no fingers. The session yields a tap only if:
   for 150 ms);
 - the maximum finger count was 1 (left click) or 2 (right click).
 
+## Tap and drag
+
+A left-click tap records its end time. If a new single-finger session starts
+within `dragWindow` (0.6 s) it is marked `followsTap`. When that session passes
+`maxTapDuration` with the finger still (path ≤ `maxFingerTravel`) the detector
+returns `.dragStart` and enters the dragging state; the cursor may move freely
+now, because the mouse itself does the dragging. The button goes down at
+`dragOrigin` (the cursor position when the touch began, not where it is after
+the 0.2 s hold). While dragging, every frame posts `leftMouseDragged`; the
+resting-finger filter is disabled so a long drag is not cut. The empty frame
+yields `.dragEnd` (button up). `AppDelegate` also releases the button if the app
+quits, MagicTap is disabled, or no frames arrive for 1 s (device vanished), so
+the button can never stay stuck.
+
+Hold-to-drag skips the tap: a single finger that stays still (path ≤ 0.04) with
+the cursor still (≤ 4 pt) for `holdToDragAfter` (0.25 s) also returns
+`.dragStart`. The delay must stay below `restingAfter` (0.30 s), otherwise the
+grip filter would drop the finger first. Moving the mouse during the wait
+discards the session, so resting a finger while repositioning does not drag.
+
 ## Why a synthetic click does not loop
 
 `ClickPoster.post` sets `ignoreButtonEventsUntil` before posting. The global
@@ -114,3 +134,22 @@ taps during physical presses; if it still happens, lower `maxTapDuration`.
 
 **Stopped working after a macOS update.** The private API likely changed. Run
 `swift run MagicTap --debug` and open an issue with the macOS version and the output.
+
+## Two-finger swipe and pinch
+
+While exactly two fingers are down, `Session` remembers their centroid and
+separation from the frame the second one landed.
+
+- **Swipe.** A centroid move of `swipeDistance` (0.12) toward +y (the tip; sensor
+  y grows toward it) with `|dx| <= dy` returns `.missionControl`; toward -y returns
+  `.missionControlClose`, which sends Escape only if we opened Mission Control.
+  One-shot per contact. If the direction feels reversed, flip the sign in
+  `swipeGesture`.
+- **Pinch.** A separation change of `pinchStartDistance` (0.05) with a nearly
+  still centroid locks the contact as a pinch: `.magnify(amount, .began)`, then
+  `.magnify(delta * pinchGain, .changed)` every frame, and `.ended` when a finger
+  lifts. The resting-finger filter is off while pinching. `ClickPoster` posts a
+  CGEvent of type 29 with the undocumented fields 110 = 8 (magnify),
+  113 = magnification, 132 = phase, which apps receive as `NSEvent.magnify`
+  (Chrome shows it as smooth page zoom). Keyboard shortcuts (⌘+/⌘−) were tried
+  first but are stepwise and depend on the keyboard layout.
