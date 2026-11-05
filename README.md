@@ -13,6 +13,7 @@ menu bar app that adds it to the Magic Mouse:
 |---|---|
 | Tap with one finger | Left click |
 | Tap with two fingers | Right click |
+| Tap twice quickly (within 0.5 s, mouse still) | Double click (open files and folders, select a word) |
 | Rest one finger still for ~0.25 s (mouse not moving) | Same drag, without a prior tap |
 | Swipe two fingers toward the tip / toward you | Opens / closes Mission Control |
 | Pinch two fingers apart / together | Smooth zoom in / out, like the trackpad (a magnify gesture, not keyboard shortcuts) |
@@ -54,6 +55,7 @@ Click the mouse icon in the menu bar:
 
 - **Enabled** — master switch.
 - **Tap → left click** / **Two-finger tap → right click** — toggle each gesture.
+- **Double tap → double click** — toggle the double click.
 - **Tap, then hold → drag** — toggle tap-and-drag.
 - **Rest finger → drag** — toggle the drag that needs no prior tap.
 - **Two-finger swipe up/down → Mission Control** / **Two-finger pinch → zoom** — toggle each gesture. Turn off the matching Magic Mouse options in System Settings so they don't fire twice.
@@ -67,6 +69,13 @@ swift run MagicTap --debug
 
 `--debug` prints every touch frame and each recognized tap, and **never injects
 clicks**. Use it to confirm your mouse is detected and to see how your taps look.
+
+### Double tap
+
+Two quick taps (the second within 0.5 s of the first, with the mouse nearly
+still) send a real double click: the second click carries click count 2, so
+Finder opens the item and text views select a word. A third tap starts a new
+pair. If you touch again and hold instead of lifting, it is a drag (see below).
 
 ### Tap and drag
 

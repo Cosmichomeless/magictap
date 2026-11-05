@@ -13,6 +13,7 @@ app de barra de menús, de código abierto, que lo añade al Magic Mouse:
 |---|---|
 | Toque con un dedo | Clic izquierdo |
 | Toque con dos dedos | Clic derecho |
+| Dos toques seguidos (en menos de 0,5 s, con el ratón quieto) | Doble clic (abrir archivos y carpetas, seleccionar una palabra) |
 | Apoyar un dedo quieto ~0,25 s (sin mover el ratón) | El mismo arrastre, sin toque previo |
 | Deslizar 2 dedos hacia la punta / hacia ti | Abre / cierra Mission Control |
 | Pellizco con 2 dedos (separar / juntar) | Zoom fluido, como el trackpad (gesto de ampliación, no atajos de teclado) |
@@ -53,7 +54,7 @@ Sin `--install`, el script solo genera `build/MagicTap.app`.
 Pulsa el icono del ratón en la barra de menús:
 
 - **Enabled** — interruptor general.
-- **Tap → left click** / **Two-finger tap → right click** / **Tap, then hold → drag** / **Rest finger → drag** / **Two-finger swipe up/down → Mission Control** / **Two-finger pinch → zoom** — activa o desactiva cada gesto.
+- **Tap → left click** / **Two-finger tap → right click** / **Double tap → double click** / **Tap, then hold → drag** / **Rest finger → drag** / **Two-finger swipe up/down → Mission Control** / **Two-finger pinch → zoom** — activa o desactiva cada gesto.
 - **Launch at login** — solo funciona desde la `.app` empaquetada.
 
 ### Probar sin hacer clics
@@ -64,6 +65,14 @@ swift run MagicTap --debug
 
 `--debug` imprime cada fotograma táctil y cada toque reconocido, y **nunca
 genera clics**. Sirve para comprobar que tu ratón se detecta y ver cómo son tus toques.
+
+### Doble toque
+
+Dos toques rápidos (el segundo en menos de 0,5 s del primero, con el ratón casi
+quieto) envían un doble clic real: el segundo clic lleva contador 2, así que
+Finder abre el elemento y los campos de texto seleccionan una palabra. Un tercer
+toque empieza una pareja nueva. Si en vez de levantar el dedo lo mantienes, es un
+arrastre (ver abajo).
 
 ### Tocar y arrastrar
 

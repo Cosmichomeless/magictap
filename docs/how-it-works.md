@@ -79,6 +79,17 @@ no fingers. The session yields a tap only if:
   for 150 ms);
 - the maximum finger count was 1 (left click) or 2 (right click).
 
+## Double tap
+
+A left-click tap records its end time and cursor position. If the next
+one-finger session starts within `doubleTapWindow` (0.5 s) and within
+`doubleTapRadius` (8 pt) of it, the session is marked `followsDoubleTap`; when it
+ends as a valid tap the detector returns `.doubleClick` instead of `.leftClick`
+and forgets the previous tap, so a third tap starts a new pair. `ClickPoster`
+posts down/up with `mouseEventClickState` = 2. The first tap has already been
+sent as a normal click, exactly like a physical double click. A second touch that
+is held instead of lifted still becomes a drag.
+
 ## Tap and drag
 
 A left-click tap records its end time. If a new single-finger session starts
