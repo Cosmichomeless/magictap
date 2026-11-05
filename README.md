@@ -39,7 +39,7 @@ telemetry, no network access.
 
 ## Download
 
-Grab `MagicTap-0.2.1.dmg` from the
+Grab `MagicTap-0.2.2.dmg` from the
 [latest release](https://github.com/Cosmichomeless/magictap/releases/latest),
 open it and drag **MagicTap** to **Applications**.
 

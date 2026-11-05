@@ -39,7 +39,7 @@ sin telemetría y sin acceso a la red.
 
 ## Descarga
 
-Descarga `MagicTap-0.2.1.dmg` desde la
+Descarga `MagicTap-0.2.2.dmg` desde la
 [última release](https://github.com/Cosmichomeless/magictap/releases/latest),
 ábrelo y arrastra **MagicTap** a **Aplicaciones**.
 

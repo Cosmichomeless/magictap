@@ -6,14 +6,27 @@ import SwiftUI
 struct SettingsView: View {
     @ObservedObject private var nav = Navigation.shared
 
+    /// "MagicTap 0.2.1 (3)", read from the app bundle's Info.plist.
+    private static var versionLabel: String {
+        let info = Bundle.main.infoDictionary
+        let version = info?["CFBundleShortVersionString"] as? String ?? "?"
+        let build = info?["CFBundleVersion"] as? String
+        return "MagicTap \(version)" + (build.map { " (\($0))" } ?? "")
+    }
+
     var body: some View {
-        TabView(selection: $nav.tab) {
-            GesturesTab().tabItem { Label("Gestures", systemImage: "hand.tap") }.tag(Navigation.Tab.gestures)
-            LiveTab().tabItem { Label("Live", systemImage: "waveform") }.tag(Navigation.Tab.live)
-            SetupTab().tabItem { Label("Setup", systemImage: "checkmark.shield") }.tag(Navigation.Tab.setup)
+        VStack(spacing: 8) {
+            TabView(selection: $nav.tab) {
+                GesturesTab().tabItem { Label("Gestures", systemImage: "hand.tap") }.tag(Navigation.Tab.gestures)
+                LiveTab().tabItem { Label("Live", systemImage: "waveform") }.tag(Navigation.Tab.live)
+                SetupTab().tabItem { Label("Setup", systemImage: "checkmark.shield") }.tag(Navigation.Tab.setup)
+            }
+            Text(Self.versionLabel)
+                .font(.caption).foregroundStyle(.secondary)
+                .textSelection(.enabled)
         }
         .padding(16)
-        .frame(width: 560, height: 520)
+        .frame(width: 560, height: 540)
     }
 }
 
