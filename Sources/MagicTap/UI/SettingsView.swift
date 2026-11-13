@@ -36,6 +36,10 @@ private struct GesturesTab: View {
     @AppStorage(Settings.Key.enabled) private var enabled = true
     @AppStorage(Settings.Key.leftTap) private var leftTap = true
     @AppStorage(Settings.Key.rightTap) private var rightTap = true
+    @AppStorage(Settings.Key.clickFeedback) private var feedback = true
+    @AppStorage(Settings.Key.pulseSize) private var pulseSize = Settings.defaultPulseSize
+    @AppStorage(Settings.Key.clickSound) private var clickSound = true
+    @AppStorage(Settings.Key.soundVolume) private var soundVolume = Settings.defaultSoundVolume
     @AppStorage(Settings.Key.middleTap) private var middleTap = true
     @AppStorage(Settings.Key.threeFingerAction) private var threeFinger = ThreeFingerAction.showDesktop.rawValue
     @AppStorage(Settings.Key.doubleTap) private var doubleTap = true
@@ -70,6 +74,18 @@ private struct GesturesTab: View {
                 Toggle("Two-finger swipe up / down → Mission Control", isOn: $missionControl)
                 Toggle("Two-finger pinch → zoom", isOn: $pinch)
                 Toggle("One-finger swipe left / right → back / forward", isOn: $navigation)
+            }
+            Section("Click feedback") {
+                Toggle("Pulse the cursor when clicking", isOn: $feedback)
+                if feedback {
+                    Slider(label: "Pulse size", value: $pulseSize, range: Settings.pulseSizeRange, unit: "×",
+                           hint: "How much bigger the cursor gets at the peak.")
+                }
+                Toggle("Play a click sound", isOn: $clickSound)
+                if clickSound {
+                    Slider(label: "Volume", value: $soundVolume, range: 0...1, unit: "",
+                           hint: "How loud the click sound is.")
+                }
             }
             Section("Fine tuning") {
                 Slider(label: "Tap speed", value: $maxTapDuration, range: 0.12...0.35, unit: "s",

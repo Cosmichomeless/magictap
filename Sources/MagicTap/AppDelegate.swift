@@ -68,6 +68,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     func applicationWillTerminate(_ notification: Notification) {
         releaseDrag()
+        ClickFeedback.restoreCursor()
         monitor?.stop()
         if let buttonMonitor { NSEvent.removeMonitor(buttonMonitor) }
     }
@@ -98,6 +99,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             print("→ \(action)")
         } else if ClickPoster.isTrusted {
             ClickPoster.post(action, dragOrigin: detector.dragOrigin)
+            ClickFeedback.show(for: action, at: ClickPoster.cursorLocation, dragOrigin: detector.dragOrigin)
         }
     }
 
@@ -142,6 +144,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         menu.addItem(item("Two-finger swipe up/down → Mission Control", #selector(toggleMissionControl), checked: Settings.missionControlSwipe))
         menu.addItem(item("Two-finger pinch → zoom", #selector(togglePinch), checked: Settings.pinchZoom))
         menu.addItem(item("One-finger swipe left/right → back/forward", #selector(toggleNavigation), checked: Settings.navigationSwipe))
+        menu.addItem(item("Pulse the cursor when clicking", #selector(toggleFeedback), checked: Settings.clickFeedback))
+        menu.addItem(item("Play a click sound", #selector(toggleSound), checked: Settings.clickSound))
         menu.addItem(.separator())
 
         let mouseCount = monitor?.activeDeviceCount ?? 0
@@ -178,6 +182,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     @objc private func toggleRight() {
         Settings.twoFingerRightClick.toggle()
         detector.config = Settings.tapConfig
+    }
+
+    @objc private func toggleFeedback() {
+        Settings.clickFeedback.toggle()
+        if !Settings.clickFeedback { ClickFeedback.restoreCursor() }
+    }
+
+    @objc private func toggleSound() {
+        Settings.clickSound.toggle()
     }
 
     @objc private func toggleMiddle() {

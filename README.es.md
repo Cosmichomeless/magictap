@@ -39,7 +39,7 @@ sin telemetría y sin acceso a la red.
 
 ## Descarga
 
-Descarga `MagicTap-0.2.2.dmg` desde la
+Descarga `MagicTap-0.3.0.dmg` desde la
 [última release](https://github.com/Cosmichomeless/magictap/releases/latest),
 ábrelo y arrastra **MagicTap** a **Aplicaciones**.
 
@@ -78,6 +78,7 @@ El menú tiene los mismos interruptores:
 - **Tap → left click** / **Two-finger tap → right click** / **Three-finger tap → middle click** / **Double tap → double click** / **Tap, then hold → drag** / **Rest finger → drag** / / **Two-finger swipe up/down → Mission Control** / **Two-finger pinch → zoom** — activa o desactiva cada gesto.
 - **One-finger swipe left/right → back/forward** — activa o desactiva el gesto atrás/adelante.
 - **Three-finger hold** — apoya tres dedos medio segundo; elige qué hace: Show Desktop (por defecto), clic central, Mission Control o nada.
+- **Pulse the cursor when clicking** — el cursor real crece un instante en cada clic que envía MagicTap (el Magic Mouse no tiene háptica); **Pulse size** ajusta cuánto. **Play a click sound** añade un clic suave, con su propio volumen.
 - **Launch at login** — solo funciona desde la `.app` empaquetada.
 
 ### Probar sin hacer clics

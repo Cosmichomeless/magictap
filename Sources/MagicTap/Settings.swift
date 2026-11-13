@@ -25,6 +25,10 @@ enum Settings {
         static let enabled = "enabled"
         static let leftTap = "singleFingerLeftClick"
         static let rightTap = "twoFingerRightClick"
+        static let clickFeedback = "clickFeedback"
+        static let pulseSize = "pulseSize"
+        static let clickSound = "clickSound"
+        static let soundVolume = "soundVolume"
         static let middleTap = "threeFingerMiddleClick"
         static let threeFingerAction = "threeFingerAction"
         static let tapAndDrag = "tapAndDrag"
@@ -68,6 +72,31 @@ enum Settings {
     static var twoFingerRightClick: Bool {
         get { defaults.object(forKey: Key.rightTap) as? Bool ?? true }
         set { defaults.set(newValue, forKey: Key.rightTap) }
+    }
+
+    /// The cursor pulses when MagicTap sends a click.
+    static var clickFeedback: Bool {
+        get { defaults.object(forKey: Key.clickFeedback) as? Bool ?? true }
+        set { defaults.set(newValue, forKey: Key.clickFeedback) }
+    }
+
+    /// How much bigger the cursor gets at the peak of the pulse (1.6 = 60 % bigger).
+    static let defaultPulseSize = 1.6
+    static let pulseSizeRange = 1.1...2.5
+    static var pulseSize: Double {
+        let value = number(Key.pulseSize, default: defaultPulseSize)
+        return min(max(value, pulseSizeRange.lowerBound), pulseSizeRange.upperBound)
+    }
+
+    /// A soft click sound plays when MagicTap sends a click.
+    static var clickSound: Bool {
+        get { defaults.object(forKey: Key.clickSound) as? Bool ?? true }
+        set { defaults.set(newValue, forKey: Key.clickSound) }
+    }
+
+    static let defaultSoundVolume = 0.5
+    static var soundVolume: Double {
+        min(max(number(Key.soundVolume, default: defaultSoundVolume), 0), 1)
     }
 
     static var threeFingerMiddleClick: Bool {

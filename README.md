@@ -39,7 +39,7 @@ telemetry, no network access.
 
 ## Download
 
-Grab `MagicTap-0.2.2.dmg` from the
+Grab `MagicTap-0.3.0.dmg` from the
 [latest release](https://github.com/Cosmichomeless/magictap/releases/latest),
 open it and drag **MagicTap** to **Applications**.
 
@@ -82,6 +82,7 @@ The menu has the same switches:
 - **Tap, then hold → drag** — toggle tap-and-drag.
 - **Rest finger → drag** — toggle the drag that needs no prior tap.
 - **Two-finger swipe up/down → Mission Control** / **Two-finger pinch → zoom** — toggle each gesture. Turn off the matching Magic Mouse options in System Settings so they don't fire twice.
+- **Pulse the cursor when clicking** — the real cursor grows briefly on every click MagicTap sends (the Magic Mouse has no haptics); **Pulse size** sets how much. **Play a click sound** adds a soft click, with its own volume.
 - **Launch at login** — only works from the bundled `.app`.
 
 ### Try it without clicking anything
